@@ -17,7 +17,7 @@ resources:
       RegistrationEnforcement:
         AuthenticationMethodsRegistrationCampaign:
           State: enabled
-          SnoozeDurationInDays: 2
+          SnoozeDurationInDays: 3
           ExcludeTargets: []
           IncludeTargets:
             - TargetType: group
