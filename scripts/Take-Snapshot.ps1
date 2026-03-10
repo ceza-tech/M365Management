@@ -28,13 +28,14 @@
 #>
 param(
     [string[]]$Resources = @(
-        'conditionalAccessPolicy',
-        'authenticationMethodsPolicy',
-        'authorizationPolicy',
-        'identitySecurityDefaultsEnforcementPolicy'
+        'microsoft.entra.conditionalaccesspolicy',
+        'microsoft.entra.authenticationmethodpolicy',
+        'microsoft.entra.authorizationpolicy',
+        'microsoft.entra.securitydefaults'
     ),
 
-    [string]$DisplayName = "M365Management-Snapshot-$(Get-Date -Format 'yyyyMMdd-HHmmss')",
+    # DisplayName rules: 8-32 chars, alphanumeric + spaces only (no hyphens or special chars)
+    [string]$DisplayName = "Snapshot $(Get-Date -Format 'yyyyMMdd HHmmss')",
     [string]$Description = 'Automated snapshot taken by Take-Snapshot.ps1',
     [string]$OutputDir   = (Join-Path (Split-Path $PSScriptRoot -Parent) 'snapshots' 'output')
 )
