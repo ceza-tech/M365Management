@@ -135,10 +135,29 @@ Write-Step "Checking for existing monitor '$MonitorDisplayName'..."
 $monitors = Invoke-GraphRequest -Endpoint '/admin/configurationManagement/configurationMonitors' -Token $token
 $existingMonitor = $monitors.value | Where-Object { $_.displayName -eq $MonitorDisplayName } | Select-Object -First 1
 
+# Normalize resources: the BaselineResource API type only accepts 'resourceType' and 'properties'.
+# If a YAML entry has a top-level 'id', move it into properties.Id (e.g. CA policy GUIDs, 'Global').
+$normalizedResources = $baselineResources | ForEach-Object {
+    $r = $_
+    if ($r -is [hashtable]) {
+        $rType  = $r['resourceType']
+        $rProps = if ($r['properties']) { $r['properties'] } else { @{} }
+        if ($r['id'] -and -not $rProps['Id']) {
+            $rProps['Id'] = $r['id']
+        }
+        @{ resourceType = $rType; properties = $rProps }
+    } else {
+        # PSCustomObject (e.g. from ConvertFrom-Json)
+        $rProps = if ($r.properties) { $r.properties | ConvertTo-Json -Depth 10 | ConvertFrom-Json -AsHashtable } else { @{} }
+        if ($r.id -and -not $rProps['Id']) { $rProps['Id'] = $r.id }
+        @{ resourceType = $r.resourceType; properties = $rProps }
+    }
+}
+
 $monitorBody = @{
     displayName = $MonitorDisplayName
     baseline    = @{
-        resources = $baselineResources
+        resources = @($normalizedResources)
     }
 }
 
