@@ -1,57 +1,29 @@
 # config/entra/conditional-access-policies.yaml
 # Desired state for Conditional Access Policies in Microsoft Entra.
 #
-# HOW TO USE:
-#   Each entry needs the real GUID of the CA policy in your tenant.
-#   Find GUIDs in the Entra portal → Protection → Conditional Access, or
-#   run a snapshot: pwsh ./scripts/Take-Snapshot.ps1 -Resources @('microsoft.entra.conditionalaccesspolicy')
+# STATUS: PLACEHOLDER — your tenant currently has no CA policies (Security Defaults is enabled).
+# To use this file:
+#   1. Create CA policies in the Entra portal first
+#   2. Run a snapshot to get their real GUIDs:
+#      pwsh -Command "./scripts/Take-Snapshot.ps1 -Resources @('microsoft.entra.conditionalaccesspolicy')"
+#   3. Replace the placeholder GUIDs below with the real ones
+#   4. Add only properties supported by the UTCM schema (DisplayName, State, Ensure)
 #
-#   Then push to main — GitHub Actions will enforce the desired state.
-#
-# IMPORTANT: Property names must be PascalCase (as returned in the snapshot).
+# IMPORTANT: GrantControls and Conditions are NOT supported by the UTCM monitor schema.
+# The monitor enforces high-level state (enabled/disabled), not full policy body.
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#conditionalaccesspolicy-resource-type
 
 resources:
   - resourceType: microsoft.entra.conditionalaccesspolicy
-    # Replace with the real GUID from your tenant (from Entra portal or snapshot)
-    id: "00000000-0000-0000-0000-000000000001"
     properties:
+      Id: "00000000-0000-0000-0000-000000000001"
       DisplayName: "Require MFA for All Users"
       State: enabled
-      Conditions:
-        Users:
-          IncludeUsers:
-            - All
-          ExcludeUsers: []
-          ExcludeGroups: []
-        Applications:
-          IncludeApplications:
-            - All
-        ClientAppTypes:
-          - browser
-          - mobileAppsAndDesktopClients
-      GrantControls:
-        Operator: OR
-        BuiltInControls:
-          - mfa
+      Ensure: Present
 
   - resourceType: microsoft.entra.conditionalaccesspolicy
-    # Replace with the real GUID from your tenant
-    id: "00000000-0000-0000-0000-000000000002"
     properties:
+      Id: "00000000-0000-0000-0000-000000000002"
       DisplayName: "Block Legacy Authentication"
       State: enabled
-      Conditions:
-        Users:
-          IncludeUsers:
-            - All
-        Applications:
-          IncludeApplications:
-            - All
-        ClientAppTypes:
-          - exchangeActiveSync
-          - other
-      GrantControls:
-        Operator: OR
-        BuiltInControls:
-          - block
+      Ensure: Present

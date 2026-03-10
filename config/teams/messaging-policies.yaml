@@ -1,11 +1,11 @@
 # config/teams/messaging-policies.yaml
-# Desired state for Teams Messaging Policies.
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-teams-resources#messagingpolicy-resource-type
 
 resources:
   - resourceType: microsoft.teams.messagingpolicy
-    id: Global
     properties:
+      Identity: Global
+      DisplayName: "Global Messaging Policy"
       AllowGiphy: true
       AllowImmersiveReader: true
       AllowMemes: true

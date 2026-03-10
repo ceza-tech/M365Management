@@ -2,10 +2,10 @@
 # Desired state for Authentication Method policies.
 #
 # HOW TO USE:
-#   Edit properties below, then run:  pwsh ./scripts/Apply-Config.ps1
-#   or push to main — GitHub Actions will apply automatically.
+#   Edit properties below, then push to main — GitHub Actions applies automatically.
+#   Or run locally: pwsh ./scripts/Apply-Config.ps1
 #
-# The resource type and property names must exactly match what the snapshot returns.
+# Property names must exactly match the UTCM API schema (PascalCase as in snapshot).
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#authenticationmethodpolicy-resource-type
 
 resources:
@@ -13,10 +13,7 @@ resources:
     properties:
       Id: "authenticationMethodsPolicy"
       DisplayName: "Authentication Methods Policy"
-      IsSingleInstance: "Yes"
       Ensure: "Present"
-      # Registration campaign nudges users to register Microsoft Authenticator.
-      # Set State to 'enabled' to actively prompt, 'disabled' to leave it off.
       RegistrationEnforcement:
         AuthenticationMethodsRegistrationCampaign:
           State: enabled

@@ -1,22 +1,25 @@
 # config/teams/meeting-policies.yaml
 # Desired state for Teams Meeting Policies.
 #
-# HOW TO USE:
-#   Push to main — GitHub Actions applies automatically.
-#   Or run locally: pwsh ./scripts/Apply-Config.ps1
+# STATUS: Schema under validation — Teams UTCM properties are being confirmed against
+# the actual API schema. Only fully validated properties should be uncommented.
 #
-# Resource type uses the microsoft.teams.* dotted namespace.
+# Key findings from API validation:
+#   - Teams policies require 'Identity' not 'Id' as the key property
+#   - Not all Graph policy properties are in the UTCM monitor schema
+#   - Run a snapshot to confirm supported properties:
+#     pwsh -Command "./scripts/Take-Snapshot.ps1 -Resources @('microsoft.teams.meetingpolicy')"
+#
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-teams-resources#meetingpolicy-resource-type
 
 resources:
   - resourceType: microsoft.teams.meetingpolicy
-    # 'Global' is the org-wide default policy applied to all users without an explicit assignment
-    id: Global
     properties:
+      Identity: Global
+      DisplayName: "Global Meeting Policy"
       AllowAnonymousUsersToJoinMeeting: false
       AllowAnonymousUsersToStartMeeting: false
       AllowExternalParticipantGiveRequestControl: false
-      AllowForeignParticipantsToUseCameraInMeeting: true
       AllowMeetingRegistration: true
       AllowNetworkConfigurationSettingsLookup: false
       AllowOrganizersToOverrideLobbySettings: false
@@ -26,6 +29,4 @@ resources:
       AllowRecordingStorageOutsideRegion: false
       AllowTranscription: true
       AutoAdmittedUsers: EveryoneInCompanyExcludingGuests
-      LobbyBypassScope: Organization
-      RecordingStorageMode: OneDriveForBusiness
       VideoFiltersMode: All
