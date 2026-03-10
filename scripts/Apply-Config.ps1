@@ -182,10 +182,5 @@ if ($existingMonitor) {
     $monitorId = $newMonitor.id
 }
 
-Write-Step "Triggering immediate monitoring evaluation..."
-Invoke-GraphRequest -Method POST `
-    -Endpoint "/admin/configurationManagement/configurationMonitors/$monitorId/run" `
-    -Token $token | Out-Null
-
-Write-Success "Evaluation triggered. Monitor will run every 6 hours automatically."
-Write-Host "`n🎉 Config applied! Run Get-Drifts.ps1 to check for any configuration drift." -ForegroundColor Green
+Write-Host "`n🎉 Config applied! Monitor '$MonitorDisplayName' is active and will evaluate every 6 hours." -ForegroundColor Green
+Write-Host "   Run Get-Drifts.ps1 to check for any configuration drift." -ForegroundColor White
