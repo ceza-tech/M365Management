@@ -42,7 +42,7 @@ $token = Get-GraphAccessToken
 Write-Success "Authenticated."
 
 Write-Step "Fetching configuration monitors..."
-$monitors = Invoke-GraphRequest -Endpoint '/tenantRelationships/configurationMonitors' -Token $token
+$monitors = Invoke-GraphRequest -Endpoint '/admin/configurationManagement/configurationMonitors' -Token $token
 
 if ($MonitorDisplayName) {
     $monitors.value = $monitors.value | Where-Object { $_.displayName -eq $MonitorDisplayName }
@@ -61,7 +61,7 @@ foreach ($monitor in $monitors.value) {
     Write-Step "Checking drifts for monitor: '$($monitor.displayName)' (ID: $($monitor.id))..."
 
     $drifts = Invoke-GraphRequest `
-        -Endpoint "/tenantRelationships/configurationMonitors/$($monitor.id)/drifts" `
+        -Endpoint "/admin/configurationManagement/configurationMonitors/$($monitor.id)/drifts" `
         -Token $token
 
     foreach ($drift in $drifts.value) {

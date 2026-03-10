@@ -86,6 +86,6 @@ function Invoke-GraphRequest {
     } catch {
         $statusCode = $_.Exception.Response.StatusCode.value__
         $errorBody  = $_.ErrorDetails.Message
-        throw "Graph API error [$statusCode] on $Method $uri: $errorBody"
+        throw "Graph API error [$statusCode] on $Method ${uri}: ${errorBody}"
     }
 }

@@ -1,29 +1,42 @@
 <#
 .SYNOPSIS
     Takes a configuration snapshot of the current M365 tenant state
-    and saves it as a baseline YAML file.
+    and saves it to the snapshots/ directory.
 
 .DESCRIPTION
-    Calls the UTCM Snapshot APIs to extract current tenant configuration,
-    polls until the job completes, then downloads and saves the result
-    to the config/ directory as the desired-state baseline.
+    Calls the UTCM Snapshot APIs (POST /admin/configurationManagement/configurationSnapshots/createSnapshot)
+    to initiate an async snapshot job, polls until complete, then downloads the result
+    via the resourceLocation URL returned by the completed job.
 
-.PARAMETER WorkloadTypes
-    Which workloads to snapshot. Defaults to all supported workloads.
-    Valid values: entra, teams, exchange, intune, defender, purview
+    Required permission: ConfigurationMonitoring.ReadWrite.All (Application)
+
+.PARAMETER Resources
+    Which UTCM resource types to snapshot.
+    Use the string names that match the Graph API resource identifiers.
+    Defaults to a broad set covering Entra, conditional access, and auth methods.
+
+.PARAMETER DisplayName
+    Display name for the snapshot job in the Entra portal.
 
 .PARAMETER OutputDir
-    Where to save the snapshot output. Defaults to snapshots/
+    Where to save the snapshot JSON. Defaults to snapshots/output/
 
 .EXAMPLE
     ./Take-Snapshot.ps1
-    ./Take-Snapshot.ps1 -WorkloadTypes @("entra","teams") -OutputDir "./snapshots"
+    ./Take-Snapshot.ps1 -DisplayName "Baseline-2026-Q1"
+    ./Take-Snapshot.ps1 -Resources @('conditionalAccessPolicy','authenticationMethodsPolicy')
 #>
 param(
-    [ValidateSet('entra', 'teams', 'exchange', 'intune', 'defender', 'purview')]
-    [string[]]$WorkloadTypes = @('entra', 'teams', 'exchange', 'intune'),
+    [string[]]$Resources = @(
+        'conditionalAccessPolicy',
+        'authenticationMethodsPolicy',
+        'authorizationPolicy',
+        'identitySecurityDefaultsEnforcementPolicy'
+    ),
 
-    [string]$OutputDir = (Join-Path (Split-Path $PSScriptRoot -Parent) 'snapshots' 'output')
+    [string]$DisplayName = "M365Management-Snapshot-$(Get-Date -Format 'yyyyMMdd-HHmmss')",
+    [string]$Description = 'Automated snapshot taken by Take-Snapshot.ps1',
+    [string]$OutputDir   = (Join-Path (Split-Path $PSScriptRoot -Parent) 'snapshots' 'output')
 )
 
 Set-StrictMode -Version Latest
@@ -31,34 +44,27 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'helpers' 'Auth.ps1')
 
-#region Workload mapping (UTCM API workload type strings)
-$workloadMap = @{
-    entra    = 'microsoftEntra'
-    teams    = 'microsoftTeams'
-    exchange = 'microsoftExchangeOnline'
-    intune   = 'microsoftIntune'
-    defender = 'microsoftDefender'
-    purview  = 'microsoftPurview'
-}
-#endregion
 
-function Write-Step([string]$Msg) { Write-Host "`n▶ $Msg" -ForegroundColor Cyan }
+function Write-Step([string]$Msg)    { Write-Host "`n▶ $Msg" -ForegroundColor Cyan }
 function Write-Success([string]$Msg) { Write-Host "  ✅ $Msg" -ForegroundColor Green }
-function Write-Info([string]$Msg) { Write-Host "  ℹ  $Msg" -ForegroundColor White }
+function Write-Info([string]$Msg)    { Write-Host "  ℹ  $Msg" -ForegroundColor White }
+function Write-Warn([string]$Msg)    { Write-Host "  ⚠️  $Msg" -ForegroundColor Yellow }
 
 Write-Step "Authenticating to Microsoft Graph..."
 $token = Get-GraphAccessToken
 Write-Success "Token acquired."
 
-$resolvedWorkloads = $WorkloadTypes | ForEach-Object { $workloadMap[$_] }
-
-Write-Step "Creating snapshot job for workloads: $($WorkloadTypes -join ', ')..."
+Write-Step "Creating snapshot job '$DisplayName' (resources: $($Resources -join ', '))..."
 $snapshotBody = @{
-    workloadTypes = $resolvedWorkloads
+    displayName = $DisplayName
+    description = $Description
+    resources   = $Resources
 }
 
+# POST /admin/configurationManagement/configurationSnapshots/createSnapshot
+# Returns a configurationSnapshotJob object with an 'id' and initial 'status'
 $job = Invoke-GraphRequest -Method POST `
-    -Endpoint '/tenantRelationships/configurationSnapshotJobs' `
+    -Endpoint '/admin/configurationManagement/configurationSnapshots/createSnapshot' `
     -Body $snapshotBody `
     -Token $token
 
@@ -74,7 +80,7 @@ do {
     $elapsed += $pollIntervalSeconds
 
     $jobStatus = Invoke-GraphRequest `
-        -Endpoint "/tenantRelationships/configurationSnapshotJobs/$($job.id)" `
+        -Endpoint "/admin/configurationManagement/configurationSnapshotJobs/$($job.id)" `
         -Token $token
 
     Write-Info "Status: $($jobStatus.status) (${elapsed}s elapsed)"
@@ -82,18 +88,26 @@ do {
     if ($elapsed -ge $maxWaitSeconds) {
         throw "Snapshot job timed out after ${maxWaitSeconds}s. Job ID: $($job.id)"
     }
-} while ($jobStatus.status -notin @('succeeded', 'failed'))
+} while ($jobStatus.status -notin @('succeeded', 'failed', 'partiallySuccessful'))
 
 if ($jobStatus.status -eq 'failed') {
     throw "Snapshot job failed: $($jobStatus | ConvertTo-Json -Depth 5)"
 }
+if ($jobStatus.status -eq 'partiallySuccessful') {
+    Write-Warn "Snapshot completed with partial success. Some resources may be missing. Error: $($jobStatus.errorDetails | ConvertTo-Json -Depth 3)"
+}
 
 Write-Success "Snapshot completed!"
 
-Write-Step "Downloading snapshot results..."
-$results = Invoke-GraphRequest `
-    -Endpoint "/tenantRelationships/configurationSnapshotJobs/$($job.id)/result" `
-    -Token $token
+# The completed job exposes a resourceLocation URL pointing to the snapshot file.
+# Download it directly rather than calling a /result sub-resource.
+Write-Step "Downloading snapshot from resourceLocation..."
+if (-not $jobStatus.resourceLocation) {
+    throw "No resourceLocation on completed job. Full job: $($jobStatus | ConvertTo-Json -Depth 5)"
+}
+
+$token_header = @{ Authorization = "Bearer $token" }
+$results = Invoke-RestMethod -Uri $jobStatus.resourceLocation -Headers $token_header -Method GET
 
 if (-not (Test-Path $OutputDir)) {
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null

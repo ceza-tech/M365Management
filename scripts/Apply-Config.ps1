@@ -119,7 +119,7 @@ if ($DryRun) {
 }
 
 Write-Step "Checking for existing monitor '$MonitorDisplayName'..."
-$monitors = Invoke-GraphRequest -Endpoint '/tenantRelationships/configurationMonitors' -Token $token
+$monitors = Invoke-GraphRequest -Endpoint '/admin/configurationManagement/configurationMonitors' -Token $token
 $existingMonitor = $monitors.value | Where-Object { $_.displayName -eq $MonitorDisplayName } | Select-Object -First 1
 
 $monitorBody = @{
@@ -132,7 +132,7 @@ $monitorBody = @{
 if ($existingMonitor) {
     Write-Info "Updating existing monitor (ID: $($existingMonitor.id))..."
     Invoke-GraphRequest -Method PATCH `
-        -Endpoint "/tenantRelationships/configurationMonitors/$($existingMonitor.id)" `
+        -Endpoint "/admin/configurationManagement/configurationMonitors/$($existingMonitor.id)" `
         -Body $monitorBody `
         -Token $token | Out-Null
     Write-Success "Monitor updated."
@@ -140,7 +140,7 @@ if ($existingMonitor) {
 } else {
     Write-Info "Creating new monitor..."
     $newMonitor = Invoke-GraphRequest -Method POST `
-        -Endpoint '/tenantRelationships/configurationMonitors' `
+        -Endpoint '/admin/configurationManagement/configurationMonitors' `
         -Body $monitorBody `
         -Token $token
     Write-Success "Monitor created (ID: $($newMonitor.id))."
@@ -149,7 +149,7 @@ if ($existingMonitor) {
 
 Write-Step "Triggering immediate monitoring evaluation..."
 Invoke-GraphRequest -Method POST `
-    -Endpoint "/tenantRelationships/configurationMonitors/$monitorId/run" `
+    -Endpoint "/admin/configurationManagement/configurationMonitors/$monitorId/run" `
     -Token $token | Out-Null
 
 Write-Success "Evaluation triggered. Monitor will run every 6 hours automatically."

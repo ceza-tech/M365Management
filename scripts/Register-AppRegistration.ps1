@@ -54,13 +54,14 @@ function Write-Info([string]$Message) {
 # Required permissions to grant as Application permissions on Microsoft Graph
 # ---------------------------------------------------------------------------
 $requiredPermissions = @(
-    @{ Name = 'TenantConfiguration.ReadWrite.All'; Purpose = 'Core UTCM access'                     }
-    @{ Name = 'Policy.Read.All';                   Purpose = 'Read Conditional Access, auth policies' }
-    @{ Name = 'Policy.ReadWrite.ConditionalAccess'; Purpose = 'Manage CA policies'                   }
-    @{ Name = 'Policy.ReadWrite.AuthenticationMethod'; Purpose = 'Manage auth methods'               }
-    @{ Name = 'User.Read.All';                     Purpose = 'Read user properties'                  }
-    @{ Name = 'Group.Read.All';                    Purpose = 'Read group properties'                 }
-    @{ Name = 'RoleManagement.Read.All';           Purpose = 'Read role assignments'                 }
+    @{ Name = 'ConfigurationMonitoring.ReadWrite.All';  Purpose = 'Create/manage UTCM monitors and snapshots' }
+    @{ Name = 'ConfigurationMonitoring.Read.All';       Purpose = 'Read UTCM monitors, drifts, baselines'     }
+    @{ Name = 'Policy.Read.All';                        Purpose = 'Read Conditional Access, auth policies'    }
+    @{ Name = 'Policy.ReadWrite.ConditionalAccess';     Purpose = 'Manage CA policies'                        }
+    @{ Name = 'Policy.ReadWrite.AuthenticationMethod';  Purpose = 'Manage auth methods'                       }
+    @{ Name = 'User.Read.All';                          Purpose = 'Read user properties'                      }
+    @{ Name = 'Group.Read.All';                         Purpose = 'Read group properties'                     }
+    @{ Name = 'RoleManagement.Read.All';                Purpose = 'Read role assignments'                     }
 )
 
 $GRAPH_APP_ID = '00000003-0000-0000-c000-000000000000'  # Microsoft Graph
