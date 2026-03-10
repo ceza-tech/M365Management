@@ -123,7 +123,10 @@ Write-Step "Loaded $($baselineResources.Count) resource(s) from config files."
 if ($DryRun) {
     Write-DryRun "Would create/update monitor '$MonitorDisplayName' with $($baselineResources.Count) resource(s):"
     $baselineResources | ForEach-Object {
-        Write-DryRun "  - $($_.resourceType): $($_.id ?? $_.displayName ?? '(unnamed)')"
+        $r = $_
+        $rType = if ($r -is [hashtable]) { $r['resourceType'] } else { $r.resourceType }
+        $rId   = if ($r -is [hashtable]) { $r['id'] ?? $r['properties']?['DisplayName'] ?? '(unnamed)' } else { $r.id ?? $r.displayName ?? '(unnamed)' }
+        Write-DryRun "  - ${rType}: ${rId}"
     }
     exit 0
 }
