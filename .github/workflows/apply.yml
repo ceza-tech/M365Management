@@ -31,6 +31,8 @@ jobs:
       tenants: ${{ steps.list.outputs.tenants }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for git diff on push events
 
       - name: List tenants
         id: list
@@ -40,16 +42,18 @@ jobs:
 
           # On push, detect which tenants have changed files
           if ($env:GITHUB_EVENT_NAME -eq 'push' -and -not $requested) {
-            $changedFiles = git diff --name-only HEAD~1 HEAD 2>$null
-            $changed = $changedFiles |
-              Where-Object { $_ -match '^tenants/([^/]+)/config/' } |
-              ForEach-Object { ($_ -split '/')[1] } |
-              Select-Object -Unique
-            if ($changed) {
-              $tenants = $changed
-            } else {
-              # Fallback: run all
-              $tenants = Get-ChildItem tenants -Directory | Select-Object -ExpandProperty Name
+            $changed = $null
+            try {
+              $changedFiles = git diff --name-only HEAD~1 HEAD 2>&1
+              $global:LASTEXITCODE = 0     # reset — git exits non-zero if HEAD~1 missing
+              $changed = @($changedFiles |
+                Where-Object { $_ -match '^tenants/([^/]+)/config/' } |
+                ForEach-Object { ($_ -split '/')[1] } |
+                Select-Object -Unique)
+            } catch { $changed = $null }
+            $tenants = if ($changed.Count -gt 0) { $changed } else {
+              # Fallback: run all tenants (e.g. first push or non-config change)
+              Get-ChildItem tenants -Directory | Select-Object -ExpandProperty Name
             }
           } elseif ($requested) {
             $tenants = @($requested)
@@ -58,7 +62,7 @@ jobs:
           }
 
           $json = $tenants | ConvertTo-Json -Compress
-          if ($tenants.Count -eq 1) { $json = "[$json]" }
+          if (@($tenants).Count -eq 1) { $json = "[$json]" }
           echo "tenants=$json" >> $env:GITHUB_OUTPUT
           Write-Host "Tenants to process: $json"
 
