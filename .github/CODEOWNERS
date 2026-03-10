@@ -1,0 +1,13 @@
+# CODEOWNERS
+# Defines who must review changes to each part of the repo.
+# GitHub will automatically request these reviewers when a PR touches these paths.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# All tenant config changes require review from the repo owner
+tenants/*/config/           @ceza-tech
+
+# Workflow changes are high-risk — also require review
+.github/workflows/          @ceza-tech
+
+# Script changes require review
+scripts/                    @ceza-tech
