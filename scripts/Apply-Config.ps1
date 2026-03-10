@@ -141,18 +141,18 @@ $normalizedResources = $baselineResources | ForEach-Object {
     $r = $_
     if ($r -is [hashtable]) {
         $rType  = $r['resourceType']
-        $rProps = if ($r['properties']) { $r['properties'] } else { @{} }
-        if ($r['id'] -and -not $rProps['Id']) {
-            $rProps['Id'] = $r['id']
-        }
-        # displayName is required by the API on every resource entry
-        $rDisplayName = $rProps['DisplayName'] ?? $rProps['Id'] ?? $rType
+        $rProps = if ($r['properties']) { [hashtable]($r['properties'].Clone()) } else { @{} }
+        if ($r['id'] -and -not $rProps['Id']) { $rProps['Id'] = $r['id'] }
+        # Use DisplayName / Identity as the resource-level label, then strip from properties
+        # (the API rejects DisplayName as an unknown property on the resource itself)
+        $rDisplayName = $rProps['DisplayName'] ?? $rProps['Identity'] ?? $rProps['Id'] ?? $rType
+        $rProps.Remove('DisplayName')
         @{ displayName = $rDisplayName; resourceType = $rType; properties = $rProps }
     } else {
-        # PSCustomObject (e.g. from ConvertFrom-Json)
         $rProps = if ($r.properties) { $r.properties | ConvertTo-Json -Depth 10 | ConvertFrom-Json -AsHashtable } else { @{} }
         if ($r.id -and -not $rProps['Id']) { $rProps['Id'] = $r.id }
-        $rDisplayName = $rProps['DisplayName'] ?? $rProps['Id'] ?? $r.resourceType
+        $rDisplayName = $rProps['DisplayName'] ?? $rProps['Identity'] ?? $rProps['Id'] ?? $r.resourceType
+        $rProps.Remove('DisplayName')
         @{ displayName = $rDisplayName; resourceType = $r.resourceType; properties = $rProps }
     }
 }
