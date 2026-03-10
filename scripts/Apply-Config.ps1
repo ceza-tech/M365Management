@@ -145,19 +145,23 @@ $normalizedResources = $baselineResources | ForEach-Object {
         if ($r['id'] -and -not $rProps['Id']) {
             $rProps['Id'] = $r['id']
         }
-        @{ resourceType = $rType; properties = $rProps }
+        # displayName is required by the API on every resource entry
+        $rDisplayName = $rProps['DisplayName'] ?? $rProps['Id'] ?? $rType
+        @{ displayName = $rDisplayName; resourceType = $rType; properties = $rProps }
     } else {
         # PSCustomObject (e.g. from ConvertFrom-Json)
         $rProps = if ($r.properties) { $r.properties | ConvertTo-Json -Depth 10 | ConvertFrom-Json -AsHashtable } else { @{} }
         if ($r.id -and -not $rProps['Id']) { $rProps['Id'] = $r.id }
-        @{ resourceType = $r.resourceType; properties = $rProps }
+        $rDisplayName = $rProps['DisplayName'] ?? $rProps['Id'] ?? $r.resourceType
+        @{ displayName = $rDisplayName; resourceType = $r.resourceType; properties = $rProps }
     }
 }
 
 $monitorBody = @{
     displayName = $MonitorDisplayName
     baseline    = @{
-        resources = @($normalizedResources)
+        displayName = $MonitorDisplayName   # Baseline also requires a displayName
+        resources   = @($normalizedResources)
     }
 }
 
