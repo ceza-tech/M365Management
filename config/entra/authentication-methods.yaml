@@ -1,30 +1,28 @@
 # config/entra/authentication-methods.yaml
 # Desired state for Authentication Method policies.
+#
+# HOW TO USE:
+#   Edit properties below, then run:  pwsh ./scripts/Apply-Config.ps1
+#   or push to main — GitHub Actions will apply automatically.
+#
+# The resource type and property names must exactly match what the snapshot returns.
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#authenticationmethodpolicy-resource-type
 
 resources:
-  - resourceType: authenticationMethodPolicy
+  - resourceType: microsoft.entra.authenticationmethodpolicy
     properties:
-      displayName: "Authentication Methods Policy"
-      registrationEnforcement:
-        authenticationMethodsRegistrationCampaign:
-          state: enabled
-
-  - resourceType: authenticationMethodPolicyFido2
-    properties:
-      state: enabled
-      isAttestationEnforced: true
-      isSelfServiceRegistrationAllowed: true
-
-  - resourceType: authenticationMethodPolicySoftware
-    # Microsoft Authenticator
-    properties:
-      state: enabled
-      featureSettings:
-        numberMatchingRequiredState:
-          state: enabled
-
-  - resourceType: authenticationMethodPolicySms
-    # SMS / Voice (legacy - consider disabling in favour of FIDO2/passkeys)
-    properties:
-      state: disabled
+      Id: "authenticationMethodsPolicy"
+      DisplayName: "Authentication Methods Policy"
+      IsSingleInstance: "Yes"
+      Ensure: "Present"
+      # Registration campaign nudges users to register Microsoft Authenticator.
+      # Set State to 'enabled' to actively prompt, 'disabled' to leave it off.
+      RegistrationEnforcement:
+        AuthenticationMethodsRegistrationCampaign:
+          State: enabled
+          SnoozeDurationInDays: 1
+          ExcludeTargets: []
+          IncludeTargets:
+            - TargetType: group
+              Id: all_users
+              TargetedAuthenticationMethod: microsoftAuthenticator

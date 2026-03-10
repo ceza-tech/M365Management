@@ -1,25 +1,31 @@
 # config/teams/meeting-policies.yaml
 # Desired state for Teams Meeting Policies.
+#
+# HOW TO USE:
+#   Push to main — GitHub Actions applies automatically.
+#   Or run locally: pwsh ./scripts/Apply-Config.ps1
+#
+# Resource type uses the microsoft.teams.* dotted namespace.
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-teams-resources#meetingpolicy-resource-type
 
 resources:
-  - resourceType: meetingPolicy
-    # 'Global' is the org-wide default policy
+  - resourceType: microsoft.teams.meetingpolicy
+    # 'Global' is the org-wide default policy applied to all users without an explicit assignment
     id: Global
     properties:
-      allowAnonymousUsersToJoinMeeting: false
-      allowAnonymousUsersToStartMeeting: false
-      allowExternalParticipantGiveRequestControl: false
-      allowForeignParticipantsToUseCameraInMeeting: true
-      allowMeetingRegistration: true
-      allowNetworkConfigurationSettingsLookup: false
-      allowOrganizersToOverrideLobbySettings: false
-      allowOutlookAddIn: true
-      allowParticipantGiveRequestControl: true
-      allowPrivateMeetingScheduling: true
-      allowRecordingStorageOutsideRegion: false
-      allowTranscription: true
-      autoAdmittedUsers: EveryoneInCompanyExcludingGuests
-      lobbyBypassScope: Organization
-      recordingStorageMode: OneDriveForBusiness
-      videoFiltersMode: All
+      AllowAnonymousUsersToJoinMeeting: false
+      AllowAnonymousUsersToStartMeeting: false
+      AllowExternalParticipantGiveRequestControl: false
+      AllowForeignParticipantsToUseCameraInMeeting: true
+      AllowMeetingRegistration: true
+      AllowNetworkConfigurationSettingsLookup: false
+      AllowOrganizersToOverrideLobbySettings: false
+      AllowOutlookAddIn: true
+      AllowParticipantGiveRequestControl: true
+      AllowPrivateMeetingScheduling: true
+      AllowRecordingStorageOutsideRegion: false
+      AllowTranscription: true
+      AutoAdmittedUsers: EveryoneInCompanyExcludingGuests
+      LobbyBypassScope: Organization
+      RecordingStorageMode: OneDriveForBusiness
+      VideoFiltersMode: All

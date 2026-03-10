@@ -25,7 +25,8 @@
 param(
     [string[]]$WorkloadTypes     = @(),
     [switch]$DryRun,
-    [string]$MonitorDisplayName  = 'M365Management-GitOps'
+    # DisplayName rules: 8-32 chars, alphanumeric + spaces only (no hyphens, underscores, or special chars)
+    [string]$MonitorDisplayName  = 'M365 Management GitOps'
 )
 
 Set-StrictMode -Version Latest
@@ -67,8 +68,17 @@ if ($WorkloadTypes.Count -eq 0) {
 }
 
 Write-Step "Config-as-Code Apply"
-Write-Info "Workloads: $($WorkloadTypes -join ', ')"
+Write-Info "Workloads      : $($WorkloadTypes -join ', ')"
+Write-Info "Monitor name   : $MonitorDisplayName"
 if ($DryRun) { Write-Info "DRY-RUN mode — no changes will be made." }
+
+# Validate monitor display name early — the API enforces: 8-32 chars, alphanumeric + spaces only
+if ($MonitorDisplayName.Length -lt 8 -or $MonitorDisplayName.Length -gt 32) {
+    throw "MonitorDisplayName must be 8-32 characters. Got $($MonitorDisplayName.Length): '$MonitorDisplayName'"
+}
+if ($MonitorDisplayName -match '[^a-zA-Z0-9 ]') {
+    throw "MonitorDisplayName may only contain letters, numbers, and spaces. Got: '$MonitorDisplayName'"
+}
 
 Write-Step "Authenticating to Microsoft Graph..."
 $token = Get-GraphAccessToken

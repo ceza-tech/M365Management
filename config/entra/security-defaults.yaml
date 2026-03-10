@@ -1,10 +1,21 @@
 # config/entra/security-defaults.yaml
 # Controls Entra Security Defaults (the "on/off" baseline security toggle).
-# Note: Security Defaults cannot be enabled alongside Conditional Access Policies.
+#
+# HOW TO USE:
+#   1. Check the current live value: snapshots/output/snapshot-<latest>.json
+#   2. Edit the 'properties' block below to your desired state
+#   3. Commit + push (GitHub Actions will run Apply-Config.ps1 automatically)
+#      OR run locally: pwsh ./scripts/Apply-Config.ps1
+#
+# NOTE: Security Defaults cannot be enabled alongside Conditional Access Policies.
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#securitydefaults-resource-type
+#
+# Property names must match the snapshot exactly (PascalCase as returned by the API).
 
 resources:
-  - resourceType: securityDefaults
+  - resourceType: microsoft.entra.securitydefaults
     properties:
-      # Set to false if using Conditional Access Policies instead
-      isEnabled: false
+      IsSingleInstance: "Yes"
+      # Set to false if you use Conditional Access Policies instead
+      IsEnabled: true
+      DisplayName: "Security Defaults"

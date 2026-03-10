@@ -6,10 +6,14 @@ on:
     - cron: '0 2 * * 0'   # Every Sunday at 2am UTC
   workflow_dispatch:
     inputs:
-      workloads:
-        description: 'Comma-separated workloads to snapshot (entra,teams,exchange,intune,defender,purview)'
+      resources:
+        description: 'Comma-separated UTCM resource types to snapshot'
         required: false
-        default: 'entra,teams,exchange,intune'
+        default: 'microsoft.entra.conditionalaccesspolicy,microsoft.entra.authenticationmethodpolicy,microsoft.entra.authorizationpolicy,microsoft.entra.securitydefaults'
+      display_name:
+        description: 'Display name for this snapshot job (8-32 chars, letters/numbers/spaces only)'
+        required: false
+        default: 'Scheduled Snapshot'
       commit_to_repo:
         description: 'Commit snapshot output to the repository'
         required: false
@@ -35,11 +39,18 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: |
-          $workloads = '${{ github.event.inputs.workloads }}' -split ',' | ForEach-Object { $_.Trim() }
-          if (-not $workloads -or $workloads[0] -eq '') {
-            $workloads = @('entra','teams','exchange','intune')
+          $resources = '${{ github.event.inputs.resources }}' -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+          if (-not $resources) {
+            $resources = @(
+              'microsoft.entra.conditionalaccesspolicy',
+              'microsoft.entra.authenticationmethodpolicy',
+              'microsoft.entra.authorizationpolicy',
+              'microsoft.entra.securitydefaults'
+            )
           }
-          ./scripts/Take-Snapshot.ps1 -WorkloadTypes $workloads
+          $displayName = '${{ github.event.inputs.display_name }}'
+          if (-not $displayName) { $displayName = 'Scheduled Snapshot' }
+          ./scripts/Take-Snapshot.ps1 -Resources $resources -DisplayName $displayName
 
       - name: Upload snapshot as artifact
         uses: actions/upload-artifact@v4

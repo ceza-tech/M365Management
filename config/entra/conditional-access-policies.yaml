@@ -1,48 +1,57 @@
 # config/entra/conditional-access-policies.yaml
-# Defines desired state for Conditional Access Policies in Microsoft Entra.
+# Desired state for Conditional Access Policies in Microsoft Entra.
+#
+# HOW TO USE:
+#   Each entry needs the real GUID of the CA policy in your tenant.
+#   Find GUIDs in the Entra portal → Protection → Conditional Access, or
+#   run a snapshot: pwsh ./scripts/Take-Snapshot.ps1 -Resources @('microsoft.entra.conditionalaccesspolicy')
+#
+#   Then push to main — GitHub Actions will enforce the desired state.
+#
+# IMPORTANT: Property names must be PascalCase (as returned in the snapshot).
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#conditionalaccesspolicy-resource-type
 
 resources:
-  - resourceType: conditionalAccessPolicy
-    # The 'id' is the GUID of the existing CA policy in your tenant.
-    # You can find it in the Entra portal or from a snapshot.
+  - resourceType: microsoft.entra.conditionalaccesspolicy
+    # Replace with the real GUID from your tenant (from Entra portal or snapshot)
     id: "00000000-0000-0000-0000-000000000001"
     properties:
-      displayName: "Require MFA for All Users"
-      state: enabled
-      conditions:
-        users:
-          includeUsers:
+      DisplayName: "Require MFA for All Users"
+      State: enabled
+      Conditions:
+        Users:
+          IncludeUsers:
             - All
-          excludeUsers: []
-          excludeGroups: []
-        applications:
-          includeApplications:
+          ExcludeUsers: []
+          ExcludeGroups: []
+        Applications:
+          IncludeApplications:
             - All
-        clientAppTypes:
+        ClientAppTypes:
           - browser
           - mobileAppsAndDesktopClients
-      grantControls:
-        operator: OR
-        builtInControls:
+      GrantControls:
+        Operator: OR
+        BuiltInControls:
           - mfa
 
-  - resourceType: conditionalAccessPolicy
+  - resourceType: microsoft.entra.conditionalaccesspolicy
+    # Replace with the real GUID from your tenant
     id: "00000000-0000-0000-0000-000000000002"
     properties:
-      displayName: "Block Legacy Authentication"
-      state: enabled
-      conditions:
-        users:
-          includeUsers:
+      DisplayName: "Block Legacy Authentication"
+      State: enabled
+      Conditions:
+        Users:
+          IncludeUsers:
             - All
-        applications:
-          includeApplications:
+        Applications:
+          IncludeApplications:
             - All
-        clientAppTypes:
+        ClientAppTypes:
           - exchangeActiveSync
           - other
-      grantControls:
-        operator: OR
-        builtInControls:
+      GrantControls:
+        Operator: OR
+        BuiltInControls:
           - block
