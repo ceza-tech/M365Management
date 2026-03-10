@@ -1,17 +1,20 @@
 name: Take Configuration Snapshot
 
 on:
-  # Weekly snapshot for baseline auditing
   schedule:
     - cron: '0 2 * * 0'   # Every Sunday at 2am UTC
   workflow_dispatch:
     inputs:
-      resources:
-        description: 'Comma-separated UTCM resource types to snapshot'
+      tenant:
+        description: 'Tenant to snapshot (folder name under tenants/). Leave blank to snapshot all.'
         required: false
-        default: 'microsoft.entra.conditionalaccesspolicy,microsoft.entra.authenticationmethodpolicy,microsoft.entra.authorizationpolicy,microsoft.entra.securitydefaults'
+        default: ''
+      resources:
+        description: 'Comma-separated UTCM resource types. Leave blank for defaults.'
+        required: false
+        default: ''
       display_name:
-        description: 'Display name for this snapshot job (8-32 chars, letters/numbers/spaces only)'
+        description: 'Snapshot display name (8-32 chars, letters/numbers/spaces only)'
         required: false
         default: 'Scheduled Snapshot'
       commit_to_repo:
@@ -21,25 +24,50 @@ on:
         type: boolean
 
 permissions:
-  contents: write   # Needed to commit snapshot files
+  contents: write
 
 jobs:
-  snapshot:
-    name: Capture Tenant Configuration Snapshot
+  discover-tenants:
+    name: Discover Tenants
     runs-on: ubuntu-latest
+    outputs:
+      tenants: ${{ steps.list.outputs.tenants }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: List tenants
+        id: list
+        shell: pwsh
+        run: |
+          $requested = '${{ github.event.inputs.tenant }}'
+          $tenants   = if ($requested) { @($requested) } else {
+            Get-ChildItem tenants -Directory | Select-Object -ExpandProperty Name
+          }
+          $json = $tenants | ConvertTo-Json -Compress
+          if ($tenants.Count -eq 1) { $json = "[$json]" }
+          echo "tenants=$json" >> $env:GITHUB_OUTPUT
+
+  snapshot:
+    name: Snapshot — ${{ matrix.tenant }}
+    needs: discover-tenants
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.tenant }}
+    strategy:
+      matrix:
+        tenant: ${{ fromJson(needs.discover-tenants.outputs.tenants) }}
+      fail-fast: false
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Take snapshot
         shell: pwsh
         env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID:     ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID:     ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: |
-          $resources = '${{ github.event.inputs.resources }}' -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+          $resources = '${{ github.event.inputs.resources }}' -split ',' |
+            ForEach-Object { $_.Trim() } | Where-Object { $_ }
           if (-not $resources) {
             $resources = @(
               'microsoft.entra.conditionalaccesspolicy',
@@ -50,35 +78,35 @@ jobs:
           }
           $displayName = '${{ github.event.inputs.display_name }}'
           if (-not $displayName) { $displayName = 'Scheduled Snapshot' }
-          ./scripts/Take-Snapshot.ps1 -Resources $resources -DisplayName $displayName
+          $outDir = "tenants/${{ matrix.tenant }}/snapshots"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          ./scripts/Take-Snapshot.ps1 -Resources $resources -DisplayName $displayName -OutputDir $outDir
 
       - name: Upload snapshot as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: m365-snapshot-${{ github.run_number }}
-          path: snapshots/output/
+          name: snapshot-${{ matrix.tenant }}-${{ github.run_number }}
+          path: tenants/${{ matrix.tenant }}/snapshots/
           retention-days: 30
 
       - name: Write snapshot summary
         shell: pwsh
         run: |
-          $files = Get-ChildItem -Path snapshots/output -Filter '*.json' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $files = Get-ChildItem -Path "tenants/${{ matrix.tenant }}/snapshots" -Filter '*.json' |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if ($files) {
-            echo "## 📸 Snapshot Complete" >> $env:GITHUB_STEP_SUMMARY
+            echo "## 📸 Snapshot — ${{ matrix.tenant }}" >> $env:GITHUB_STEP_SUMMARY
             echo "" >> $env:GITHUB_STEP_SUMMARY
-            echo "Snapshot saved as workflow artifact: **$($files.Name)**" >> $env:GITHUB_STEP_SUMMARY
+            echo "Snapshot saved as artifact: **$($files.Name)**" >> $env:GITHUB_STEP_SUMMARY
             echo "" >> $env:GITHUB_STEP_SUMMARY
-            echo "To use as a new desired-state baseline:" >> $env:GITHUB_STEP_SUMMARY
-            echo "1. Download the artifact" >> $env:GITHUB_STEP_SUMMARY
-            echo "2. Extract the relevant resources to \`config/<workload>/*.yaml\`" >> $env:GITHUB_STEP_SUMMARY
-            echo "3. Commit and push — the Apply workflow will enforce it going forward" >> $env:GITHUB_STEP_SUMMARY
+            echo "To use as baseline, copy relevant resources to \`tenants/${{ matrix.tenant }}/config/<workload>/*.yaml\`" >> $env:GITHUB_STEP_SUMMARY
           }
 
-      - name: Commit snapshot to repo (optional)
+      - name: Commit snapshots to repo (optional)
         if: github.event.inputs.commit_to_repo == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add snapshots/output/
-          git diff --staged --quiet || git commit -m "chore: automated tenant snapshot [skip ci]"
+          git add tenants/${{ matrix.tenant }}/snapshots/
+          git diff --staged --quiet || git commit -m "chore: snapshot ${{ matrix.tenant }} [skip ci]"
           git push

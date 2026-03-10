@@ -3,13 +3,15 @@
     Fetches and reports all active configuration drifts from UTCM monitors.
 
 .DESCRIPTION
-    Lists all configurationMonitors, then fetches active drifts from the
-    top-level /configurationDrifts endpoint (filtered by monitorId).
-    Outputs a human-readable report and optionally fails the pipeline
-    if drifts are found (for use in CI/CD).
+    Lists configurationMonitors for a given tenant, then checks the top-level
+    /configurationDrifts endpoint for any active drifts.
+
+.PARAMETER TenantName
+    Logical name of the tenant. Used to filter monitors by name prefix.
+    Default: all monitors in the tenant.
 
 .PARAMETER MonitorDisplayName
-    Filter reports to a specific monitor. Default: all monitors.
+    Filter to a specific monitor by exact display name. Default: all monitors.
 
 .PARAMETER FailOnDrift
     If set, exits with code 1 when drifts are detected. Useful in CI pipelines.
@@ -18,11 +20,12 @@
     Output format: 'table' (default) or 'json'
 
 .EXAMPLE
-    ./Get-Drifts.ps1
-    ./Get-Drifts.ps1 -FailOnDrift
-    ./Get-Drifts.ps1 -OutputFormat json
+    ./Get-Drifts.ps1 -TenantName kustomize
+    ./Get-Drifts.ps1 -TenantName kustomize -FailOnDrift
+    ./Get-Drifts.ps1 -TenantName kustomize -OutputFormat json
 #>
 param(
+    [string]$TenantName         = '',
     [string]$MonitorDisplayName = '',
     [switch]$FailOnDrift,
     [ValidateSet('table', 'json')]
@@ -43,21 +46,28 @@ $token = Get-GraphAccessToken
 Write-Success "Authenticated."
 
 Write-Step "Fetching configuration monitors..."
-$monitors = Invoke-GraphRequest -Endpoint '/admin/configurationManagement/configurationMonitors' -Token $token
+$monitorsResponse = Invoke-GraphRequest -Endpoint '/admin/configurationManagement/configurationMonitors' -Token $token
+$monitors = $monitorsResponse.value
 
+# Filter: explicit MonitorDisplayName takes priority, then TenantName prefix match
 if ($MonitorDisplayName) {
-    $monitors.value = $monitors.value | Where-Object { $_.displayName -eq $MonitorDisplayName }
+    $monitors = $monitors | Where-Object { $_.displayName -eq $MonitorDisplayName }
+} elseif ($TenantName) {
+    # Monitor names are auto-generated as "<TenantName> GitOps" — match by prefix
+    $safeName = ($TenantName -replace '[^a-zA-Z0-9 ]', ' ').Trim()
+    $prefix   = $safeName.Substring(0,1).ToUpper() + $safeName.Substring(1)
+    $monitors = $monitors | Where-Object { $_.displayName -like "$prefix*" }
 }
 
-if (-not $monitors.value -or $monitors.value.Count -eq 0) {
-    Write-Host "No monitors found. Run Apply-Config.ps1 first." -ForegroundColor Yellow
+if (-not $monitors -or @($monitors).Count -eq 0) {
+    Write-Host "No monitors found. Run Apply-Config.ps1 -TenantName $TenantName first." -ForegroundColor Yellow
+    if ($OutputFormat -eq 'json') { '[]' }
     exit 0
 }
 
-Write-Info "Found $($monitors.value.Count) monitor(s)."
+Write-Info "Found $(@($monitors).Count) monitor(s)."
 
-# Fetch all drifts from the top-level configurationDrifts endpoint
-# (sub-resource /configurationMonitors/{id}/drifts does not exist)
+# Fetch all drifts from the top-level endpoint (no per-monitor sub-resource exists)
 Write-Step "Fetching active configuration drifts..."
 $allDriftsResponse = Invoke-GraphRequest `
     -Endpoint '/admin/configurationManagement/configurationDrifts' `
@@ -65,14 +75,14 @@ $allDriftsResponse = Invoke-GraphRequest `
 
 $allDrifts = [System.Collections.Generic.List[object]]::new()
 
-foreach ($monitor in $monitors.value) {
+foreach ($monitor in @($monitors)) {
     $monitorDrifts = $allDriftsResponse.value | Where-Object { $_.monitorId -eq $monitor.id }
 
     foreach ($drift in $monitorDrifts) {
-        # driftedProperties is an array of { propertyName, expectedValue, currentValue }
         if ($drift.driftedProperties) {
             foreach ($prop in $drift.driftedProperties) {
                 $allDrifts.Add([PSCustomObject]@{
+                    Tenant        = $TenantName
                     Monitor       = $monitor.displayName
                     ResourceType  = $drift.resourceType
                     ResourceId    = $drift.resourceInstanceIdentifier
@@ -84,8 +94,8 @@ foreach ($monitor in $monitors.value) {
                 })
             }
         } else {
-            # Drift exists but no specific property detail
             $allDrifts.Add([PSCustomObject]@{
+                Tenant        = $TenantName
                 Monitor       = $monitor.displayName
                 ResourceType  = $drift.resourceType
                 ResourceId    = $drift.resourceInstanceIdentifier
@@ -103,9 +113,9 @@ if ($OutputFormat -eq 'json') {
     $allDrifts | ConvertTo-Json -Depth 10
 } else {
     if ($allDrifts.Count -eq 0) {
-        Write-Host "`n✅ No drifts detected! Tenant configuration is aligned with desired state." -ForegroundColor Green
+        Write-Host "`n✅ No drifts detected! Tenant '$TenantName' configuration is aligned with desired state." -ForegroundColor Green
     } else {
-        Write-Host "`n⚠️  $($allDrifts.Count) drift(s) detected:" -ForegroundColor Red
+        Write-Host "`n⚠️  $($allDrifts.Count) drift(s) detected for tenant '$TenantName':" -ForegroundColor Red
         $allDrifts | Format-Table -AutoSize
     }
 }
