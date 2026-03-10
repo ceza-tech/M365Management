@@ -1,0 +1,25 @@
+# config/teams/meeting-policies.yaml
+# Desired state for Teams Meeting Policies.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-teams-resources#meetingpolicy-resource-type
+
+resources:
+  - resourceType: meetingPolicy
+    # 'Global' is the org-wide default policy
+    id: Global
+    properties:
+      allowAnonymousUsersToJoinMeeting: false
+      allowAnonymousUsersToStartMeeting: false
+      allowExternalParticipantGiveRequestControl: false
+      allowForeignParticipantsToUseCameraInMeeting: true
+      allowMeetingRegistration: true
+      allowNetworkConfigurationSettingsLookup: false
+      allowOrganizersToOverrideLobbySettings: false
+      allowOutlookAddIn: true
+      allowParticipantGiveRequestControl: true
+      allowPrivateMeetingScheduling: true
+      allowRecordingStorageOutsideRegion: false
+      allowTranscription: true
+      autoAdmittedUsers: EveryoneInCompanyExcludingGuests
+      lobbyBypassScope: Organization
+      recordingStorageMode: OneDriveForBusiness
+      videoFiltersMode: All

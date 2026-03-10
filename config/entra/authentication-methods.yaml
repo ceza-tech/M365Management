@@ -1,0 +1,30 @@
+# config/entra/authentication-methods.yaml
+# Desired state for Authentication Method policies.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#authenticationmethodpolicy-resource-type
+
+resources:
+  - resourceType: authenticationMethodPolicy
+    properties:
+      displayName: "Authentication Methods Policy"
+      registrationEnforcement:
+        authenticationMethodsRegistrationCampaign:
+          state: enabled
+
+  - resourceType: authenticationMethodPolicyFido2
+    properties:
+      state: enabled
+      isAttestationEnforced: true
+      isSelfServiceRegistrationAllowed: true
+
+  - resourceType: authenticationMethodPolicySoftware
+    # Microsoft Authenticator
+    properties:
+      state: enabled
+      featureSettings:
+        numberMatchingRequiredState:
+          state: enabled
+
+  - resourceType: authenticationMethodPolicySms
+    # SMS / Voice (legacy - consider disabling in favour of FIDO2/passkeys)
+    properties:
+      state: disabled

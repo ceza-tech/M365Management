@@ -1,0 +1,25 @@
+# Environment variables - NEVER commit secrets
+.env
+*.env.local
+
+# PowerShell artifacts
+*.ps1xml
+*.psd1.bak
+
+# Snapshot outputs (may contain sensitive config data)
+snapshots/output/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/

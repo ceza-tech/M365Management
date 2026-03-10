@@ -1,0 +1,125 @@
+name: Drift Detection
+
+on:
+  # Run every 6 hours (aligned with UTCM monitor frequency)
+  schedule:
+    - cron: '0 */6 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      fail_on_drift:
+        description: 'Fail pipeline if drifts are detected'
+        required: false
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: read
+  issues: write    # Needed to create GitHub issues on drift detection
+
+jobs:
+  drift-check:
+    name: Check Configuration Drift
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for configuration drifts
+        id: drift_check
+        shell: pwsh
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          $driftsJson = ./scripts/Get-Drifts.ps1 -OutputFormat json
+          $drifts = $driftsJson | ConvertFrom-Json
+
+          # Write summary to GitHub Actions step summary
+          if ($drifts.Count -eq 0) {
+            echo "## ✅ No Configuration Drift Detected" >> $env:GITHUB_STEP_SUMMARY
+            echo "" >> $env:GITHUB_STEP_SUMMARY
+            echo "Tenant configuration is aligned with desired state in \`config/\`." >> $env:GITHUB_STEP_SUMMARY
+            "drift_count=0" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "## ⚠️ Configuration Drift Detected" >> $env:GITHUB_STEP_SUMMARY
+            echo "" >> $env:GITHUB_STEP_SUMMARY
+            echo "**$($drifts.Count) drift(s) found:**" >> $env:GITHUB_STEP_SUMMARY
+            echo "" >> $env:GITHUB_STEP_SUMMARY
+            echo "| Monitor | Resource Type | Property | Expected | Actual |" >> $env:GITHUB_STEP_SUMMARY
+            echo "|---|---|---|---|---|" >> $env:GITHUB_STEP_SUMMARY
+            foreach ($d in $drifts) {
+              echo "| $($d.Monitor) | $($d.ResourceType) | $($d.Property) | $($d.ExpectedValue) | $($d.ActualValue) |" >> $env:GITHUB_STEP_SUMMARY
+            }
+            "drift_count=$($drifts.Count)" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Create GitHub Issue on drift detected
+        if: steps.drift_check.outputs.drift_count != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const driftCount = '${{ steps.drift_check.outputs.drift_count }}';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            // Check if open drift issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['drift-detected'],
+              state: 'open'
+            });
+
+            const title = `⚠️ M365 Configuration Drift Detected (${driftCount} drift(s))`;
+            const body = `## Configuration Drift Alert\n\n**${driftCount} drift(s)** were detected between your desired state in \`config/\` and the live tenant.\n\n**[View workflow run for details](${runUrl})**\n\n### Remediation Options\n1. **Re-apply config**: Push a commit to \`main\` or manually trigger the [Apply Config](.github/workflows/apply.yml) workflow\n2. **Update desired state**: If the drift is intentional, update the YAML in \`config/\` to reflect the new desired state\n\n_This issue was automatically created by the scheduled drift detection workflow._`;
+
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['drift-detected', 'm365-config']
+              });
+            } else {
+              // Update existing issue with latest count
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `🔄 **Updated drift check** (${new Date().toISOString()}): **${driftCount} drift(s)** still detected. [View details](${runUrl})`
+              });
+            }
+
+      - name: Close drift issues if resolved
+        if: steps.drift_check.outputs.drift_count == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['drift-detected'],
+              state: 'open'
+            });
+
+            for (const issue of issues.data) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '✅ **Drift resolved!** No configuration drift detected in the latest check. Closing this issue.'
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed'
+              });
+            }
+
+      - name: Fail on drift (if enabled)
+        if: steps.drift_check.outputs.drift_count != '0' && github.event.inputs.fail_on_drift != 'false'
+        run: exit 1

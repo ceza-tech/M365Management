@@ -1,0 +1,10 @@
+# config/entra/security-defaults.yaml
+# Controls Entra Security Defaults (the "on/off" baseline security toggle).
+# Note: Security Defaults cannot be enabled alongside Conditional Access Policies.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#securitydefaults-resource-type
+
+resources:
+  - resourceType: securityDefaults
+    properties:
+      # Set to false if using Conditional Access Policies instead
+      isEnabled: false

@@ -1,0 +1,21 @@
+# config/teams/messaging-policies.yaml
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-teams-resources#messagingpolicy-resource-type
+
+resources:
+  - resourceType: messagingPolicy
+    id: Global
+    properties:
+      allowGiphy: true
+      allowImmersiveReader: true
+      allowMemes: true
+      allowOwnerDeleteMessage: false
+      allowPriorityMessages: true
+      allowSmartCompose: true
+      allowSmartReply: true
+      allowStickers: true
+      allowUrlPreviews: true
+      allowUserChat: true
+      allowUserDeleteMessage: true
+      allowUserEditMessage: true
+      giphyRatingType: Moderate
+      readReceiptsEnabledType: UserOverride

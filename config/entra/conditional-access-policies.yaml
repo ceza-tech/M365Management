@@ -1,0 +1,48 @@
+# config/entra/conditional-access-policies.yaml
+# Defines desired state for Conditional Access Policies in Microsoft Entra.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#conditionalaccesspolicy-resource-type
+
+resources:
+  - resourceType: conditionalAccessPolicy
+    # The 'id' is the GUID of the existing CA policy in your tenant.
+    # You can find it in the Entra portal or from a snapshot.
+    id: "00000000-0000-0000-0000-000000000001"
+    properties:
+      displayName: "Require MFA for All Users"
+      state: enabled
+      conditions:
+        users:
+          includeUsers:
+            - All
+          excludeUsers: []
+          excludeGroups: []
+        applications:
+          includeApplications:
+            - All
+        clientAppTypes:
+          - browser
+          - mobileAppsAndDesktopClients
+      grantControls:
+        operator: OR
+        builtInControls:
+          - mfa
+
+  - resourceType: conditionalAccessPolicy
+    id: "00000000-0000-0000-0000-000000000002"
+    properties:
+      displayName: "Block Legacy Authentication"
+      state: enabled
+      conditions:
+        users:
+          includeUsers:
+            - All
+        applications:
+          includeApplications:
+            - All
+        clientAppTypes:
+          - exchangeActiveSync
+          - other
+      grantControls:
+        operator: OR
+        builtInControls:
+          - block
