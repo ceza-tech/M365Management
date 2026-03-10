@@ -19,7 +19,7 @@ resources:
       DisplayName: "Global Meeting Policy"
       AllowAnonymousUsersToJoinMeeting: false
       AllowAnonymousUsersToStartMeeting: false
-      AllowExternalParticipantGiveRequestControl: false
+      AllowExternalParticipantGiveRequestControl: true
       AllowMeetingRegistration: true
       AllowNetworkConfigurationSettingsLookup: false
       AllowOrganizersToOverrideLobbySettings: false
