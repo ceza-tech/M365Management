@@ -75,35 +75,56 @@ $allDriftsResponse = Invoke-GraphRequest `
 
 $allDrifts = [System.Collections.Generic.List[object]]::new()
 
+# Helper: safely read a property regardless of casing, returns $null if missing
+function Get-PropSafe($Obj, [string]$Name) {
+    if ($null -eq $Obj) { return $null }
+    $prop = $Obj.PSObject.Properties[$Name]
+    if ($prop) { return $prop.Value }
+    # Case-insensitive fallback
+    $prop = $Obj.PSObject.Properties | Where-Object { $_.Name -ieq $Name } | Select-Object -First 1
+    return $prop?.Value
+}
+
 foreach ($monitor in @($monitors)) {
     $monitorDrifts = $allDriftsResponse.value | Where-Object { $_.monitorId -eq $monitor.id }
 
+    # Log raw schema of first drift once so we can verify field names
+    if ($monitorDrifts -and $OutputFormat -ne 'json') {
+        $first = @($monitorDrifts)[0]
+        Write-Info "Raw drift fields: $($first.PSObject.Properties.Name -join ', ')"
+        if ($first.driftedProperties) {
+            $firstProp = @($first.driftedProperties)[0]
+            Write-Info "Raw driftedProperty fields: $($firstProp.PSObject.Properties.Name -join ', ')"
+        }
+    }
+
     foreach ($drift in $monitorDrifts) {
-        if ($drift.driftedProperties) {
-            foreach ($prop in $drift.driftedProperties) {
+        $driftedProps = Get-PropSafe $drift 'driftedProperties'
+        if ($driftedProps) {
+            foreach ($prop in @($driftedProps)) {
                 $allDrifts.Add([PSCustomObject]@{
                     Tenant        = $TenantName
                     Monitor       = $monitor.displayName
-                    ResourceType  = $drift.resourceType
-                    ResourceId    = $drift.resourceInstanceIdentifier
-                    Property      = $prop.propertyName
-                    ExpectedValue = $prop.expectedValue
-                    ActualValue   = $prop.currentValue
-                    DetectedAt    = $drift.firstReportedDateTime
-                    Status        = $drift.status
+                    ResourceType  = (Get-PropSafe $drift 'resourceType')
+                    ResourceId    = (Get-PropSafe $drift 'resourceInstanceIdentifier') ?? (Get-PropSafe $drift 'resourceId')
+                    Property      = (Get-PropSafe $prop 'propertyName') ?? (Get-PropSafe $prop 'name')
+                    ExpectedValue = (Get-PropSafe $prop 'expectedValue') ?? (Get-PropSafe $prop 'baselineValue')
+                    ActualValue   = (Get-PropSafe $prop 'currentValue') ?? (Get-PropSafe $prop 'actualValue')
+                    DetectedAt    = (Get-PropSafe $drift 'firstReportedDateTime') ?? (Get-PropSafe $drift 'detectedDateTime')
+                    Status        = (Get-PropSafe $drift 'status')
                 })
             }
         } else {
             $allDrifts.Add([PSCustomObject]@{
                 Tenant        = $TenantName
                 Monitor       = $monitor.displayName
-                ResourceType  = $drift.resourceType
-                ResourceId    = $drift.resourceInstanceIdentifier
+                ResourceType  = (Get-PropSafe $drift 'resourceType')
+                ResourceId    = (Get-PropSafe $drift 'resourceInstanceIdentifier') ?? (Get-PropSafe $drift 'resourceId')
                 Property      = '(see portal)'
                 ExpectedValue = $null
                 ActualValue   = $null
-                DetectedAt    = $drift.firstReportedDateTime
-                Status        = $drift.status
+                DetectedAt    = (Get-PropSafe $drift 'firstReportedDateTime') ?? (Get-PropSafe $drift 'detectedDateTime')
+                Status        = (Get-PropSafe $drift 'status')
             })
         }
     }
