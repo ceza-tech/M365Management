@@ -75,14 +75,16 @@ $allDriftsResponse = Invoke-GraphRequest `
 
 $allDrifts = [System.Collections.Generic.List[object]]::new()
 
-# Helper: safely read a property regardless of casing, returns $null if missing
+# Helper: safely read a property by name regardless of casing; returns $null if missing.
+# NOTE: Cannot use ?. null-conditional — Set-StrictMode -Version Latest treats $var? as unset.
 function Get-PropSafe($Obj, [string]$Name) {
     if ($null -eq $Obj) { return $null }
-    $prop = $Obj.PSObject.Properties[$Name]
-    if ($prop) { return $prop.Value }
+    $found = $Obj.PSObject.Properties[$Name]
+    if ($found) { return $found.Value }
     # Case-insensitive fallback
-    $prop = $Obj.PSObject.Properties | Where-Object { $_.Name -ieq $Name } | Select-Object -First 1
-    return $prop?.Value
+    $found = $Obj.PSObject.Properties | Where-Object { $_.Name -ieq $Name } | Select-Object -First 1
+    if ($found) { return $found.Value }
+    return $null
 }
 
 foreach ($monitor in @($monitors)) {
