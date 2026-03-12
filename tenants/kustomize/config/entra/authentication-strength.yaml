@@ -1,0 +1,58 @@
+# config/entra/authentication-strength.yaml
+# Defines MFA strength policies used in Conditional Access.
+# The three built-in policies (IDs starting with 00000000-...) cannot be modified, only monitored.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#authenticationstrengthpolicy-resource-type
+
+resources:
+  # Built-in: standard MFA (password + any second factor)
+  - resourceType: microsoft.entra.authenticationstrengthpolicy
+    properties:
+      Ensure: "Present"
+      Id: "00000000-0000-0000-0000-000000000002"
+      DisplayName: "Multifactor authentication"
+      Description: "Combinations of methods that satisfy strong authentication, such as a password + SMS"
+      AllowedCombinations:
+        - windowsHelloForBusiness
+        - fido2
+        - x509CertificateMultiFactor
+        - deviceBasedPush
+        - temporaryAccessPassOneTime
+        - temporaryAccessPassMultiUse
+        - password,microsoftAuthenticatorPush
+        - password,softwareOath
+        - password,hardwareOath
+        - password,x509CertificateSingleFactor
+        - password,x509CertificateMultiFactor
+        - password,sms
+        - password,voice
+        - federatedMultiFactor
+        - microsoftAuthenticatorPush,federatedSingleFactor
+        - softwareOath,federatedSingleFactor
+        - hardwareOath,federatedSingleFactor
+        - sms,federatedSingleFactor
+        - voice,federatedSingleFactor
+
+  # Built-in: passwordless (no password needed)
+  - resourceType: microsoft.entra.authenticationstrengthpolicy
+    properties:
+      Ensure: "Present"
+      Id: "00000000-0000-0000-0000-000000000003"
+      DisplayName: "Passwordless MFA"
+      Description: "Passwordless methods that satisfy strong authentication, such as Passwordless sign-in with the Microsoft Authenticator"
+      AllowedCombinations:
+        - windowsHelloForBusiness
+        - fido2
+        - x509CertificateMultiFactor
+        - deviceBasedPush
+
+  # Built-in: phishing-resistant (highest assurance)
+  - resourceType: microsoft.entra.authenticationstrengthpolicy
+    properties:
+      Ensure: "Present"
+      Id: "00000000-0000-0000-0000-000000000004"
+      DisplayName: "Phishing-resistant MFA"
+      Description: "Phishing-resistant, Passwordless methods for the strongest authentication, such as a FIDO2 security key"
+      AllowedCombinations:
+        - windowsHelloForBusiness
+        - fido2
+        - x509CertificateMultiFactor

@@ -1,0 +1,37 @@
+# config/entra/authorization-policy.yaml
+# Controls what default users can do: create apps, create tenants, invite guests, etc.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#authorizationpolicy-resource-type
+
+resources:
+  - resourceType: microsoft.entra.authorizationpolicy
+    properties:
+      IsSingleInstance: "Yes"
+      Ensure: "Present"
+      DisplayName: "Authorization Policy"
+      Description: "Used to manage authorization related settings across the company."
+      GuestUserRole: "Guest"
+
+      # Guest invitation settings
+      AllowInvitesFrom: "adminsGuestInvitersAndAllMembers"    # Options: adminsAndGuestInviters, adminsGuestInvitersAndAllMembers, everyone, none
+
+      # Default user role permissions — lock these down for a hardened tenant
+      DefaultUserRoleAllowedToCreateApps: true                # Set false to prevent users registering apps
+      DefaultUserRoleAllowedToCreateSecurityGroups: true
+      DefaultUserRoleAllowedToCreateTenants: true             # Set false to prevent users creating new tenants
+      DefaultUserRoleAllowedToReadOtherUsers: true
+      DefaultUserRoleAllowedToReadBitlockerKeysForOwnedDevice: true
+
+      # Self-service
+      AllowedToUseSSPR: true
+      AllowedToSignUpEmailBasedSubscriptions: true
+      AllowEmailVerifiedUsersToJoinOrganization: true
+
+      # Legacy PowerShell block (recommended: true for hardened tenants)
+      BlockMsolPowerShell: false
+
+      # OAuth app consent policies for default user role
+      PermissionGrantPolicyIdsAssignedToDefaultUserRole:
+        - "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team"
+        - "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat"
+        - "ManagePermissionGrantsForSelf.microsoft-user-default-recommended"
+        - "ManagePermissionGrantsForSelf.microsoft-user-default-allow-consent-apps"

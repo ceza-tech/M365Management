@@ -1,0 +1,29 @@
+# config/entra/named-locations.yaml
+# Trusted IP ranges and country locations used in Conditional Access policies.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#namedlocationpolicy-resource-type
+
+resources:
+  - resourceType: microsoft.entra.namedlocationpolicy
+    properties:
+      Ensure: "Present"
+      Id: "ef282f43-5451-4ae3-b6cc-0b8aa09c6ca5"
+      DisplayName: "WinguHQ"
+      OdataType: "#microsoft.graph.ipNamedLocation"
+      IsTrusted: true          # Mark as trusted location — excluded from MFA in CA policies
+      IpRanges:
+        - "139.218.117.186/32"   # Office public IP
+
+# To add more locations:
+#  - resourceType: microsoft.entra.namedlocationpolicy
+#    properties:
+#      Ensure: "Present"
+#      DisplayName: "Branch Office"
+#      OdataType: "#microsoft.graph.ipNamedLocation"
+#      IsTrusted: true
+#      IpRanges:
+#        - "x.x.x.x/32"
+#
+# For country-based locations use:
+#      OdataType: "#microsoft.graph.countryNamedLocation"
+#      CountriesAndRegions: ["AU", "NZ"]
+#      IncludeUnknownCountriesAndRegions: false

@@ -1,0 +1,18 @@
+# config/teams/calling-policy.yaml
+# Controls PSTN calling capabilities for users.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-teams-resources#callingpolicy-resource-type
+
+resources:
+  - resourceType: microsoft.teams.callingpolicy
+    properties:
+      Identity: "Global"
+      AllowPrivateCalling: true
+      AllowWebPSTNCalling: true
+      AllowVoicemail: "UserOverride"
+      AllowCallGroups: true
+      AllowDelegation: true
+      AllowCallForwardingToUser: true
+      AllowCallForwardingToPhone: true
+      PreventTollBypass: false
+      BusyOnBusyEnabledType: "Disabled"
+      MusicOnHoldEnabledType: "Enabled"

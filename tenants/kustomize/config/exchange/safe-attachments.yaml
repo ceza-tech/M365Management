@@ -1,0 +1,16 @@
+# config/exchange/safe-attachments.yaml
+# Defender for Office 365 Safe Attachments policy.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-exchange-resources#safeattachmentpolicy-resource-type
+#
+# NOTE: Run Take-Snapshot.ps1 with microsoft.exchange.safeattachmentpolicy after granting
+#       Exchange.ManageAsApp permission to populate real values.
+
+resources:
+  - resourceType: microsoft.exchange.safeattachmentpolicy
+    properties:
+      Identity: "Built-In Protection Policy"   # Default Defender policy name
+      Enable: true
+      Action: "Block"                          # Block, Replace, Allow, DynamicDelivery
+      ActionOnError: true
+      Redirect: false
+      # RedirectAddress: "security@yourdomain.com"   # Set if Redirect: true

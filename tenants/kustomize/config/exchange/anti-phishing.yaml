@@ -1,0 +1,31 @@
+# config/exchange/anti-phishing.yaml
+# Defender for Office 365 anti-phishing policy — impersonation and spoof protection.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-exchange-resources#antiphishpolicy-resource-type
+#
+# NOTE: Run Take-Snapshot.ps1 with microsoft.exchange.antiphishpolicy after granting
+#       Exchange.ManageAsApp permission to populate real values from your tenant.
+
+resources:
+  - resourceType: microsoft.exchange.antiphishpolicy
+    properties:
+      Identity: "Office365 AntiPhish Default"
+      Enabled: true
+
+      # Spoof intelligence
+      EnableSpoofIntelligence: true
+      EnableUnauthenticatedSender: true    # Show '?' on unverified senders
+
+      # Mailbox intelligence (requires Defender for Office 365 Plan 1+)
+      EnableMailboxIntelligence: true
+      EnableMailboxIntelligenceProtection: true
+      MailboxIntelligenceProtectionAction: "MoveToJmf"
+
+      # Impersonation protection
+      EnableOrganizationDomainsProtection: true
+      EnableTargetedDomainsProtection: false
+      EnableTargetedUserProtection: false
+
+      # Actions on detected phish
+      AuthenticationFailAction: "MoveToJmf"
+      SpoofQuarantineTag: "DefaultFullAccessPolicy"
+      PhishThresholdLevel: 1     # 1=Standard, 2=Aggressive, 3=More aggressive, 4=Most aggressive

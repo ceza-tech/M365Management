@@ -1,0 +1,13 @@
+# config/teams/channels-policy.yaml
+# Controls who can create private and shared channels.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-teams-resources#channelspolicy-resource-type
+
+resources:
+  - resourceType: microsoft.teams.channelspolicy
+    properties:
+      Identity: "Global"
+      AllowOrgWideTeamCreation: true
+      AllowPrivateChannelCreation: true
+      AllowSharedChannelCreation: true
+      AllowUserToParticipateInExternalSharedChannel: true
+      AllowChannelSharingToExternalUser: true

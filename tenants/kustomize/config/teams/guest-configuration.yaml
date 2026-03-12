@@ -1,0 +1,32 @@
+# config/teams/guest-configuration.yaml
+# Controls what guest users can do in Teams meetings, messaging, and calls.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-teams-resources#guestmeetingconfiguration-resource-type
+
+resources:
+  # Guest meeting capabilities
+  - resourceType: microsoft.teams.guestmeetingconfiguration
+    properties:
+      Identity: "Global"
+      AllowIPVideo: true
+      ScreenSharingMode: "EntireScreen"
+      AllowMeetNow: true
+
+  # Guest messaging capabilities
+  - resourceType: microsoft.teams.guestmessagingconfiguration
+    properties:
+      Identity: "Global"
+      AllowUserChat: true
+      AllowUserEditMessage: true
+      AllowUserDeleteMessage: true
+      AllowUserDeleteChat: true
+      AllowImmersiveReader: true
+      AllowGiphy: true
+      GiphyRatingType: "Moderate"
+      AllowMemes: true
+      AllowStickers: true
+
+  # Guest calling capabilities
+  - resourceType: microsoft.teams.guestcallingconfiguration
+    properties:
+      Identity: "Global"
+      AllowPrivateCalling: false    # Guests cannot initiate calls by default
