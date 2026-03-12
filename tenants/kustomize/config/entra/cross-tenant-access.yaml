@@ -1,0 +1,13 @@
+# config/entra/cross-tenant-access.yaml
+# Controls B2B collaboration and cross-tenant sync defaults.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#crosstenantaccesspolicy-resource-type
+
+resources:
+  - resourceType: microsoft.entra.crosstenantaccesspolicy
+    properties:
+      IsSingleInstance: "Yes"
+      Ensure: "Present"
+      DisplayName: "CrossTenantAccessPolicy for 9d058e63-1c9d-4d50-9dd8-7d4cbfd662b3"
+      # AllowedCloudEndpoints controls which sovereign cloud endpoints can federate
+      # Empty means no additional clouds (standard commercial only)
+      AllowedCloudEndpoints: []

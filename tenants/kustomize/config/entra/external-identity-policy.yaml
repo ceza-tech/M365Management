@@ -1,0 +1,12 @@
+# config/entra/external-identity-policy.yaml
+# Controls whether guest users can leave the tenant and identity data deletion on leave.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-entra-resources#externalidentitypolicy-resource-type
+
+resources:
+  - resourceType: microsoft.entra.externalidentitypolicy
+    properties:
+      IsSingleInstance: "Yes"
+      # Allow guests to remove themselves from this tenant without admin intervention
+      AllowExternalIdentitiesToLeave: true
+      # Whether deleted guest identity data is also removed from the tenant
+      AllowDeletedIdentitiesDataRemoval: false

@@ -1,0 +1,33 @@
+# config/exchange/anti-spam.yaml
+# Inbound and outbound spam filter policies.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-exchange-resources#hostedcontentfilterpolicy-resource-type
+#
+# NOTE: Run Take-Snapshot.ps1 with microsoft.exchange.hostedcontentfilterpolicy after granting
+#       Exchange.ManageAsApp permission to populate real values.
+
+resources:
+  # Inbound spam filter (default policy)
+  - resourceType: microsoft.exchange.hostedcontentfilterpolicy
+    properties:
+      Identity: "Default"
+      SpamAction: "MoveToJmf"                 # Move spam to Junk Mail folder
+      HighConfidenceSpamAction: "Quarantine"
+      PhishSpamAction: "Quarantine"
+      HighConfidencePhishAction: "Quarantine"
+      BulkThreshold: 6                        # 1-9, lower = more aggressive. 6 is Microsoft default
+      MarkAsSpamBulkMail: "On"
+      EnableLanguageBlockList: false
+      EnableRegionBlockList: false
+      ZapEnabled: true                        # Zero-hour Auto Purge — retroactively moves malicious mail
+      SpamZapEnabled: true
+      PhishZapEnabled: true
+
+  # Outbound spam filter (default policy)
+  - resourceType: microsoft.exchange.hostedoutboundspamfilterpolicy
+    properties:
+      Identity: "Default"
+      RecipientLimitExternalPerHour: 500
+      RecipientLimitInternalPerHour: 1000
+      RecipientLimitPerDay: 1000
+      ActionWhenThresholdReached: "BlockUser"  # Block, BlockUserForToday, Alert
+      AutoForwardingMode: "Automatic"          # Automatic, On, Off. Set 'Off' to block auto-forwarding

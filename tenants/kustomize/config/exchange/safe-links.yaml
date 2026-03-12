@@ -1,0 +1,18 @@
+# config/exchange/safe-links.yaml
+# Defender for Office 365 Safe Links policy — URL rewriting and click protection.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-exchange-resources#safelinkspolicy-resource-type
+#
+# NOTE: Run Take-Snapshot.ps1 with microsoft.exchange.safelinkspolicy after granting
+#       Exchange.ManageAsApp permission to populate real values.
+
+resources:
+  - resourceType: microsoft.exchange.safelinkspolicy
+    properties:
+      Identity: "Built-In Protection Policy"
+      IsEnabled: true
+      ScanUrls: true                           # Scan links in email messages
+      EnableForInternalSenders: true           # Scan links in internal emails too
+      DeliverMessageAfterScan: true            # Hold delivery until scan completes
+      DisableUrlRewrite: false                 # Keep URL rewriting enabled
+      TrackClicks: true                        # Log user clicks for reporting
+      AllowClickThrough: false                 # Block users from clicking through to bad URLs

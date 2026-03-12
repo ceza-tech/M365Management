@@ -1,0 +1,13 @@
+# config/teams/federation-configuration.yaml
+# Controls external access (federation) — whether users can communicate with external Teams tenants.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-teams-resources#federationconfiguration-resource-type
+
+resources:
+  - resourceType: microsoft.teams.federationconfiguration
+    properties:
+      Identity: "Global"
+      AllowFederatedUsers: true                      # Allow communication with external Teams tenants
+      AllowPublicUsers: false                        # Block Skype consumer federation
+      AllowTeamsConsumer: false                      # Block Teams consumer (personal) accounts
+      AllowTeamsConsumerInbound: false               # Block inbound from Teams personal accounts
+      TreatDiscoveredPartnersAsUnverified: false     # Trust discovered federated partners
