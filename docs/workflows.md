@@ -6,7 +6,7 @@ Three workflows implement the GitOps SDLC for M365 configuration management:
 
 ```
 apply.yml          → Runs when config/ changes are pushed to main
-drift-check.yml    → Runs every 6 hours to detect configuration drift  
+drift-check.yml    → Runs every 6 hours to detect configuration drift
 snapshot.yml       → Runs weekly to capture a fresh baseline snapshot
 ```
 
@@ -72,5 +72,5 @@ Set these in: **Settings → Secrets and variables → Actions**
 
 ## Required Repository Settings
 
-Enable **Issues** (for drift detection auto-issue creation):  
+Enable **Issues** (for drift detection auto-issue creation):
 **Settings → General → Features → Issues** ✅

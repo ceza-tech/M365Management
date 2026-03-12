@@ -2,15 +2,20 @@
 # Defender for Office 365 Safe Attachments policy.
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-exchange-resources#safeattachmentpolicy-resource-type
 #
-# NOTE: Run Take-Snapshot.ps1 with microsoft.exchange.safeattachmentpolicy after granting
-#       Exchange.ManageAsApp permission to populate real values.
+# NOTE: Safe Attachments requires a Microsoft Defender for Office 365 Plan 1 or Plan 2 license.
+# The snapshot job did not return this resource type for this tenant — it may not be licensed
+# or the default built-in policy was not discoverable via UTCM.
+#
+# Once licensed, uncomment the resource block below and re-run Take-Snapshot.ps1 with
+# 'microsoft.exchange.safeattachmentpolicy' to get real values.
 
-resources:
-  - resourceType: microsoft.exchange.safeattachmentpolicy
-    properties:
-      Identity: "Built-In Protection Policy"   # Default Defender policy name
-      Enable: true
-      Action: "Block"                          # Block, Replace, Allow, DynamicDelivery
-      ActionOnError: true
-      Redirect: false
-      # RedirectAddress: "security@yourdomain.com"   # Set if Redirect: true
+resources: []  # Empty until Defender P1 license is available
+
+# resources:
+#   - resourceType: microsoft.exchange.safeattachmentpolicy
+#     properties:
+#       Identity: "Built-In Protection Policy"
+#       Enable: true
+#       Action: "Block"         # Block, Replace, Allow, DynamicDelivery
+#       ActionOnError: true
+#       Redirect: false

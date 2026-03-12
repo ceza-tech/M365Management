@@ -1,33 +1,95 @@
 # config/exchange/anti-spam.yaml
 # Inbound and outbound spam filter policies.
-# Reference: https://learn.microsoft.com/en-us/graph/utcm-exchange-resources#hostedcontentfilterpolicy-resource-type
-#
-# NOTE: Run Take-Snapshot.ps1 with microsoft.exchange.hostedcontentfilterpolicy after granting
-#       Exchange.ManageAsApp permission to populate real values.
+# Values seeded from live tenant snapshot 2026-03-12.
+# Reference: https://learn.microsoft.com/en-us/graph/utcm-exchange-resources
 
 resources:
   # Inbound spam filter (default policy)
   - resourceType: microsoft.exchange.hostedcontentfilterpolicy
     properties:
       Identity: "Default"
-      SpamAction: "MoveToJmf"                 # Move spam to Junk Mail folder
-      HighConfidenceSpamAction: "Quarantine"
-      PhishSpamAction: "Quarantine"
+      Ensure: "Present"
+      MakeDefault: true
+
+      # Spam actions
+      SpamAction: "MoveToJmf"
+      HighConfidenceSpamAction: "MoveToJmf"     # Consider upgrading to Quarantine
+      PhishSpamAction: "MoveToJmf"              # Consider upgrading to Quarantine
       HighConfidencePhishAction: "Quarantine"
-      BulkThreshold: 6                        # 1-9, lower = more aggressive. 6 is Microsoft default
+
+      # Quarantine tags
+      SpamQuarantineTag: "DefaultFullAccessPolicy"
+      BulkQuarantineTag: "DefaultFullAccessPolicy"
+      HighConfidenceSpamQuarantineTag: "DefaultFullAccessPolicy"
+      HighConfidencePhishQuarantineTag: "AdminOnlyAccessPolicy"
+      PhishQuarantineTag: "DefaultFullAccessPolicy"
+
+      # Bulk mail
+      BulkThreshold: 7                          # 1-9, lower = more aggressive
       MarkAsSpamBulkMail: "On"
-      EnableLanguageBlockList: false
-      EnableRegionBlockList: false
-      ZapEnabled: true                        # Zero-hour Auto Purge — retroactively moves malicious mail
+
+      # Zero-hour Auto Purge (ZAP)
       SpamZapEnabled: true
       PhishZapEnabled: true
+
+      # Safety tips
+      InlineSafetyTipsEnabled: true
+
+      # Advanced spam filter markers (all Off by default)
+      MarkAsSpamSpfRecordHardFail: "Off"
+      MarkAsSpamEmptyMessages: "Off"
+      MarkAsSpamFromAddressAuthFail: "Off"
+      MarkAsSpamNdrBackscatter: "Off"
+      MarkAsSpamObjectTagsInHtml: "Off"
+      MarkAsSpamEmbedTagsInHtml: "Off"
+      MarkAsSpamFormTagsInHtml: "Off"
+      MarkAsSpamFramesInHtml: "Off"
+      MarkAsSpamJavaScriptInHtml: "Off"
+      MarkAsSpamSensitiveWordList: "Off"
+      IncreaseScoreWithBizOrInfoUrls: "Off"
+      IncreaseScoreWithImageLinks: "Off"
+      IncreaseScoreWithNumericIps: "Off"
+
+      # Language/region blocking (disabled)
+      EnableLanguageBlockList: false
+      EnableRegionBlockList: false
+      LanguageBlockList: []
+      RegionBlockList: []
+
+      # Allowlists/blocklists (leave empty — manage in tenant)
+      AllowedSenders: []
+      AllowedSenderDomains: []
+      BlockedSenders: []
+      BlockedSenderDomains: []
+      TestModeBccToRecipients: []
+      RedirectToRecipients: []
+
+      # Other
+      QuarantineRetentionPeriod: 15
+      DownloadLink: false
+      TestModeAction: "None"
+      IntraOrgFilterState: "Default"
 
   # Outbound spam filter (default policy)
   - resourceType: microsoft.exchange.hostedoutboundspamfilterpolicy
     properties:
       Identity: "Default"
-      RecipientLimitExternalPerHour: 500
-      RecipientLimitInternalPerHour: 1000
-      RecipientLimitPerDay: 1000
-      ActionWhenThresholdReached: "BlockUser"  # Block, BlockUserForToday, Alert
-      AutoForwardingMode: "Automatic"          # Automatic, On, Off. Set 'Off' to block auto-forwarding
+      Ensure: "Present"
+
+      # Recipient limits — 0 means use tenant default
+      RecipientLimitExternalPerHour: 0
+      RecipientLimitInternalPerHour: 0
+      RecipientLimitPerDay: 0
+
+      # Block the user for today if threshold reached
+      ActionWhenThresholdReached: "BlockUserForToday"
+
+      # Auto-forwarding: Automatic = follow mailbox rules
+      # Set to "Off" to completely block external auto-forwarding (recommended for hardened tenants)
+      AutoForwardingMode: "Automatic"
+
+      # Notifications
+      NotifyOutboundSpam: false
+      BccSuspiciousOutboundMail: false
+      NotifyOutboundSpamRecipients: []
+      BccSuspiciousOutboundAdditionalRecipients: []

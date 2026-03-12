@@ -1,0 +1,131 @@
+{
+  "@odata.context": "https://graph.microsoft.com/beta/$metadata#admin/configurationManagement/configurationSnapshots/$entity",
+  "id": "65c75a00-9ab3-47d5-9b55-119251c3fe22",
+  "displayName": "Entra Extended",
+  "description": "Automated snapshot taken by Take-Snapshot.ps1",
+  "parameters": [],
+  "resources": [
+    {
+      "displayName": "AADCrossTenantAccessPolicy",
+      "resourceType": "microsoft.entra.crosstenantaccesspolicy",
+      "properties": {
+        "IsSingleInstance": "Yes",
+        "Ensure": "Present",
+        "DisplayName": "CrossTenantAccessPolicy for 9d058e63-1c9d-4d50-9dd8-7d4cbfd662b3",
+        "AllowedCloudEndpoints": []
+      }
+    },
+    {
+      "displayName": "AADAuthenticationStrengthPolicy-Multifactor authentication",
+      "resourceType": "microsoft.entra.authenticationstrengthpolicy",
+      "properties": {
+        "Ensure": "Present",
+        "Id": "00000000-0000-0000-0000-000000000002",
+        "DisplayName": "Multifactor authentication",
+        "Description": "Combinations of methods that satisfy strong authentication, such as a password + SMS",
+        "AllowedCombinations": [
+          "windowsHelloForBusiness",
+          "fido2",
+          "x509CertificateMultiFactor",
+          "deviceBasedPush",
+          "temporaryAccessPassOneTime",
+          "temporaryAccessPassMultiUse",
+          "password,microsoftAuthenticatorPush",
+          "password,softwareOath",
+          "password,hardwareOath",
+          "password,x509CertificateSingleFactor",
+          "password,x509CertificateMultiFactor",
+          "password,sms",
+          "password,voice",
+          "federatedMultiFactor",
+          "microsoftAuthenticatorPush,federatedSingleFactor",
+          "softwareOath,federatedSingleFactor",
+          "hardwareOath,federatedSingleFactor",
+          "sms,federatedSingleFactor",
+          "voice,federatedSingleFactor"
+        ]
+      }
+    },
+    {
+      "displayName": "AADAuthenticationStrengthPolicy-Passwordless MFA",
+      "resourceType": "microsoft.entra.authenticationstrengthpolicy",
+      "properties": {
+        "Ensure": "Present",
+        "Id": "00000000-0000-0000-0000-000000000003",
+        "DisplayName": "Passwordless MFA",
+        "Description": "Passwordless methods that satisfy strong authentication, such as Passwordless sign-in with the Microsoft Authenticator",
+        "AllowedCombinations": [
+          "windowsHelloForBusiness",
+          "fido2",
+          "x509CertificateMultiFactor",
+          "deviceBasedPush"
+        ]
+      }
+    },
+    {
+      "displayName": "AADAuthenticationStrengthPolicy-Phishing-resistant MFA",
+      "resourceType": "microsoft.entra.authenticationstrengthpolicy",
+      "properties": {
+        "Ensure": "Present",
+        "Id": "00000000-0000-0000-0000-000000000004",
+        "DisplayName": "Phishing-resistant MFA",
+        "Description": "Phishing-resistant, Passwordless methods for the strongest authentication, such as a FIDO2 security key",
+        "AllowedCombinations": [
+          "windowsHelloForBusiness",
+          "fido2",
+          "x509CertificateMultiFactor"
+        ]
+      }
+    },
+    {
+      "displayName": "AADAuthorizationPolicy",
+      "resourceType": "microsoft.entra.authorizationpolicy",
+      "properties": {
+        "AllowInvitesFrom": "adminsGuestInvitersAndAllMembers",
+        "AllowedToSignUpEmailBasedSubscriptions": true,
+        "DefaultUserRoleAllowedToCreateSecurityGroups": true,
+        "DefaultUserRoleAllowedToCreateTenants": true,
+        "BlockMsolPowerShell": false,
+        "AllowedToUseSSPR": true,
+        "AllowEmailVerifiedUsersToJoinOrganization": true,
+        "DefaultUserRoleAllowedToCreateApps": true,
+        "Ensure": "Present",
+        "DefaultUserRoleAllowedToReadOtherUsers": true,
+        "IsSingleInstance": "Yes",
+        "DefaultUserRoleAllowedToReadBitlockerKeysForOwnedDevice": true,
+        "DisplayName": "Authorization Policy",
+        "GuestUserRole": "Guest",
+        "Description": "Used to manage authorization related settings across the company.",
+        "PermissionGrantPolicyIdsAssignedToDefaultUserRole": [
+          "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-team",
+          "ManagePermissionGrantsForOwnedResource.microsoft-dynamically-managed-permissions-for-chat",
+          "ManagePermissionGrantsForSelf.microsoft-user-default-recommended",
+          "ManagePermissionGrantsForSelf.microsoft-user-default-allow-consent-apps"
+        ]
+      }
+    },
+    {
+      "displayName": "AADNamedLocationPolicy-WinguHQ",
+      "resourceType": "microsoft.entra.namedlocationpolicy",
+      "properties": {
+        "Ensure": "Present",
+        "DisplayName": "WinguHQ",
+        "OdataType": "#microsoft.graph.ipNamedLocation",
+        "IsTrusted": true,
+        "Id": "ef282f43-5451-4ae3-b6cc-0b8aa09c6ca5",
+        "IpRanges": [
+          "139.218.117.186/32"
+        ]
+      }
+    },
+    {
+      "displayName": "AADExternalIdentityPolicy",
+      "resourceType": "microsoft.entra.externalidentitypolicy",
+      "properties": {
+        "AllowDeletedIdentitiesDataRemoval": false,
+        "AllowExternalIdentitiesToLeave": true,
+        "IsSingleInstance": "Yes"
+      }
+    }
+  ]
+}

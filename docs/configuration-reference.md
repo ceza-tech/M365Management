@@ -90,7 +90,7 @@ The snapshot JSON output contains all IDs and current property values for your t
 
 ## Property Values
 
-Property names and allowed values match the Microsoft Graph API schema exactly.  
+Property names and allowed values match the Microsoft Graph API schema exactly.
 Refer to the [UTCM resource documentation](https://learn.microsoft.com/en-us/graph/api/resources/unified-tenant-configuration-management-api-overview?view=graph-rest-beta) for the full list.
 
 ## Monitoring Limits

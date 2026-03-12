@@ -1,31 +1,99 @@
 # config/exchange/anti-phishing.yaml
-# Defender for Office 365 anti-phishing policy — impersonation and spoof protection.
+# Defender for Office 365 anti-phishing policies — spoof & impersonation protection.
+# Values seeded from live tenant snapshot 2026-03-12.
 # Reference: https://learn.microsoft.com/en-us/graph/utcm-exchange-resources#antiphishpolicy-resource-type
-#
-# NOTE: Run Take-Snapshot.ps1 with microsoft.exchange.antiphishpolicy after granting
-#       Exchange.ManageAsApp permission to populate real values from your tenant.
 
 resources:
+  # Default system policy (MakeDefault: true)
   - resourceType: microsoft.exchange.antiphishpolicy
     properties:
       Identity: "Office365 AntiPhish Default"
+      Ensure: "Present"
+      MakeDefault: true
       Enabled: true
 
-      # Spoof intelligence
+      # Spoof protection
       EnableSpoofIntelligence: true
-      EnableUnauthenticatedSender: true    # Show '?' on unverified senders
+      EnableUnauthenticatedSender: true   # Show '?' on unverified external senders
+      EnableViaTag: true                  # Show 'via' tag on forwarded mails
+      SpoofQuarantineTag: "DefaultFullAccessPolicy"
 
-      # Mailbox intelligence (requires Defender for Office 365 Plan 1+)
+      # DMARC enforcement
+      HonorDmarcPolicy: true
+      DmarcRejectAction: "Reject"
+      DmarcQuarantineAction: "Quarantine"
+
+      # Mailbox intelligence (Defender for Office 365 Plan 1+)
       EnableMailboxIntelligence: true
-      EnableMailboxIntelligenceProtection: true
-      MailboxIntelligenceProtectionAction: "MoveToJmf"
+      EnableMailboxIntelligenceProtection: false
+      MailboxIntelligenceProtectionAction: "NoAction"
+      MailboxIntelligenceQuarantineTag: "DefaultFullAccessPolicy"
 
-      # Impersonation protection
-      EnableOrganizationDomainsProtection: true
+      # Impersonation protection (automatic mode — managed by Microsoft)
+      ImpersonationProtectionState: "Automatic"
+      EnableOrganizationDomainsProtection: false
       EnableTargetedDomainsProtection: false
       EnableTargetedUserProtection: false
 
-      # Actions on detected phish
+      # Action on spoof detection
       AuthenticationFailAction: "MoveToJmf"
+      PhishThresholdLevel: 1              # 1=Standard, 2=Aggressive, 3=More, 4=Most
+
+      # Safety tips
+      EnableFirstContactSafetyTips: false
+      EnableSimilarUsersSafetyTips: false
+      EnableSimilarDomainsSafetyTips: false
+      EnableUnusualCharactersSafetyTips: false
+
+      # Quarantine tags
+      TargetedDomainQuarantineTag: "DefaultFullAccessPolicy"
+      TargetedUserQuarantineTag: "DefaultFullAccessPolicy"
+
+      # Policy scope (empty = applies globally)
+      TargetedDomainActionRecipients: []
+      TargetedUserActionRecipients: []
+      TargetedUsersToProtect: []
+      TargetedDomainsToProtect: []
+      ExcludedSenders: []
+      ExcludedDomains: []
+      MailboxIntelligenceProtectionActionRecipients: []
+
+  # Custom policy "te" (non-default)
+  - resourceType: microsoft.exchange.antiphishpolicy
+    properties:
+      Identity: "te"
+      Ensure: "Present"
+      MakeDefault: false
+      Enabled: true
+      EnableSpoofIntelligence: true
+      EnableUnauthenticatedSender: true
+      EnableViaTag: true
+      HonorDmarcPolicy: true
+      DmarcRejectAction: "Reject"
+      DmarcQuarantineAction: "Quarantine"
+      EnableMailboxIntelligence: true
+      EnableMailboxIntelligenceProtection: false
+      ImpersonationProtectionState: "Manual"
+      EnableOrganizationDomainsProtection: false
+      EnableTargetedDomainsProtection: false
+      EnableTargetedUserProtection: false
+      AuthenticationFailAction: "MoveToJmf"
+      PhishThresholdLevel: 1
       SpoofQuarantineTag: "DefaultFullAccessPolicy"
-      PhishThresholdLevel: 1     # 1=Standard, 2=Aggressive, 3=More aggressive, 4=Most aggressive
+      TargetedDomainQuarantineTag: "DefaultFullAccessPolicy"
+      TargetedUserQuarantineTag: "DefaultFullAccessPolicy"
+      MailboxIntelligenceQuarantineTag: "DefaultFullAccessPolicy"
+      TargetedDomainProtectionAction: "NoAction"
+      TargetedUserProtectionAction: "NoAction"
+      MailboxIntelligenceProtectionAction: "NoAction"
+      EnableFirstContactSafetyTips: false
+      EnableSimilarUsersSafetyTips: false
+      EnableSimilarDomainsSafetyTips: false
+      EnableUnusualCharactersSafetyTips: false
+      TargetedDomainActionRecipients: []
+      TargetedUserActionRecipients: []
+      TargetedUsersToProtect: []
+      TargetedDomainsToProtect: []
+      ExcludedSenders: []
+      ExcludedDomains: []
+      MailboxIntelligenceProtectionActionRecipients: []

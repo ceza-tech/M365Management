@@ -1,0 +1,120 @@
+# GitHub Issue creation workflow for drift alerts
+# Triggered by Get-Drifts.ps1 when drifts are detected
+
+name: Create Drift Alert Issue
+
+on:
+  workflow_call:
+    inputs:
+      tenant_name:
+        required: true
+        type: string
+      drift_count:
+        required: true
+        type: number
+      drift_summary:
+        required: true
+        type: string
+      monitor_id:
+        required: false
+        type: string
+
+jobs:
+  create-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Check for existing open issue
+        id: check_issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'drift-alert,${{ inputs.tenant_name }}'
+            });
+
+            if (issues.data.length > 0) {
+              core.setOutput('exists', 'true');
+              core.setOutput('issue_number', issues.data[0].number);
+            } else {
+              core.setOutput('exists', 'false');
+            }
+
+      - name: Create new issue
+        if: steps.check_issue.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Configuration Drift Detected: ${{ inputs.tenant_name }}`;
+            const body = `## Drift Alert
+
+            **Tenant:** \`${{ inputs.tenant_name }}\`
+            **Detected:** ${new Date().toISOString()}
+            **Drift Count:** ${{ inputs.drift_count }}
+
+            ### Summary
+
+            ${{ inputs.drift_summary }}
+
+            ### Next Steps
+
+            1. Review the drifted configuration in the Entra portal
+            2. Decide whether to:
+               - **Accept the drift**: Update the YAML config to match current state
+               - **Remediate**: Re-apply the baseline config
+            3. Run \`Get-Drifts.ps1 -TenantName ${{ inputs.tenant_name }}\` to verify resolution
+
+            ### Commands
+
+            \`\`\`powershell
+            # View current drifts
+            pwsh ./scripts/Get-Drifts.ps1 -TenantName ${{ inputs.tenant_name }} -OutputFormat json
+
+            # Re-apply baseline (remediate)
+            pwsh ./scripts/Apply-Config.ps1 -TenantName ${{ inputs.tenant_name }}
+
+            # Take new snapshot (accept drift)
+            pwsh ./scripts/Take-Snapshot.ps1 -Resources @('microsoft.entra.conditionalaccesspolicy')
+            \`\`\`
+
+            ---
+            *This issue was automatically created by the drift detection workflow.*
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['drift-alert', '${{ inputs.tenant_name }}', 'automated']
+            });
+
+      - name: Update existing issue
+        if: steps.check_issue.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## Drift Still Present
+
+            **Detected:** ${new Date().toISOString()}
+            **Drift Count:** ${{ inputs.drift_count }}
+
+            ### Current Summary
+
+            ${{ inputs.drift_summary }}
+
+            ---
+            *Automated update from drift detection workflow.*
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.check_issue.outputs.issue_number }},
+              body: comment
+            });
