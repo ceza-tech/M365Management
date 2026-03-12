@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project uses **Client Credentials** (service principal) flow to authenticate to Microsoft Graph.  
+This project uses **Client Credentials** (service principal) flow to authenticate to Microsoft Graph.
 This is the recommended approach for non-interactive/CI environments like GitHub Actions.
 
 ## Step 1: Create an App Registration in Entra

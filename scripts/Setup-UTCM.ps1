@@ -28,7 +28,8 @@ param(
         'Application.Read.All',
         # Shared
         'TenantConfiguration.ReadWrite.All'
-    )
+    ),
+    [switch]$IncludeExchange   # Also grant Exchange.ManageAsApp + Exchange Administrator role to UTCM SP
 )
 
 Set-StrictMode -Version Latest
@@ -60,7 +61,8 @@ foreach ($mod in $requiredModules) {
 Write-Step "Connecting to Microsoft Graph (interactive)..."
 Connect-MgGraph -Scopes @(
     'Application.ReadWrite.All',
-    'AppRoleAssignment.ReadWrite.All'
+    'AppRoleAssignment.ReadWrite.All',
+    'RoleManagement.ReadWrite.Directory'
 )
 Write-Success "Connected."
 
@@ -105,6 +107,56 @@ foreach ($permission in $Permissions) {
     }
     New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $utcmSP.Id -BodyParameter $body | Out-Null
     Write-Success "Granted: $permission"
+}
+
+# ---------------------------------------------------------------------------
+# Exchange Online setup (optional)
+# ---------------------------------------------------------------------------
+if ($IncludeExchange) {
+    Write-Step "Setting up Exchange Online permissions for UTCM SP..."
+
+    $EXCHANGE_APP_ID        = '00000002-0000-0ff1-ce00-000000000000'
+    $EXCHANGE_ADMIN_ROLE_ID = '29232cdf-9323-42fd-ade2-1d097af3e4de'
+
+    # Get Exchange Online SP
+    $exoSP = Get-MgServicePrincipal -Filter "AppId eq '$EXCHANGE_APP_ID'" -ErrorAction SilentlyContinue
+    if (-not $exoSP) {
+        Write-Warn "Exchange Online SP not found in tenant — skipping Exchange setup."
+    } else {
+        Write-Success "Found Exchange Online SP (Object ID: $($exoSP.Id))."
+
+        # Grant Exchange.ManageAsApp
+        $exoRole = $exoSP.AppRoles | Where-Object { $_.Value -eq 'Exchange.ManageAsApp' }
+        if ($exoRole) {
+            $existingExo = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $utcmSP.Id |
+                           Where-Object { $_.AppRoleId -eq $exoRole.Id }
+            if ($existingExo) {
+                Write-Warn "'Exchange.ManageAsApp' already granted — skipping."
+            } else {
+                New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $utcmSP.Id -BodyParameter @{
+                    AppRoleId   = $exoRole.Id
+                    ResourceId  = $exoSP.Id
+                    PrincipalId = $utcmSP.Id
+                } | Out-Null
+                Write-Success "Granted: Exchange.ManageAsApp"
+            }
+        }
+
+        # Assign Exchange Administrator directory role
+        $existingRole = Get-MgRoleManagementDirectoryRoleAssignment `
+            -Filter "principalId eq '$($utcmSP.Id)' and roleDefinitionId eq '$EXCHANGE_ADMIN_ROLE_ID'" `
+            -ErrorAction SilentlyContinue
+        if ($existingRole) {
+            Write-Warn "Exchange Administrator role already assigned — skipping."
+        } else {
+            New-MgRoleManagementDirectoryRoleAssignment -BodyParameter @{
+                PrincipalId      = $utcmSP.Id
+                RoleDefinitionId = $EXCHANGE_ADMIN_ROLE_ID
+                DirectoryScopeId = '/'
+            } | Out-Null
+            Write-Success "Assigned Exchange Administrator directory role to UTCM SP."
+        }
+    }
 }
 
 Write-Host "`n🎉 UTCM setup complete!" -ForegroundColor Green

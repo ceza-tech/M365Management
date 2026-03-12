@@ -1,0 +1,51 @@
+# Pre-commit hooks for M365Management
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [-c, .yamllint.yaml]
+        files: \.(yaml|yml)$
+
+  # General file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Secret scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  # PowerShell linting (local hook - requires PSScriptAnalyzer module)
+  - repo: local
+    hooks:
+      - id: psscriptanalyzer
+        name: PSScriptAnalyzer
+        entry: >
+          pwsh -NoProfile -Command
+          "if (Get-Module -ListAvailable PSScriptAnalyzer) {
+          Invoke-ScriptAnalyzer -Path . -Recurse -Settings .psscriptanalyzer.psd1 -EnableExit
+          } else { Write-Warning 'PSScriptAnalyzer not installed'; exit 0 }"
+        language: system
+        files: \.ps1$
+        pass_filenames: false
+
+      - id: schema-validate
+        name: Validate YAML schemas
+        entry: pwsh -NoProfile -File ./scripts/Validate-Schema.ps1
+        language: system
+        files: ^tenants/.*/config/.*\.yaml$
+        pass_filenames: false

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/M365Management/schemas/config.schema.json",
+  "title": "M365 Configuration File",
+  "description": "Schema for UTCM configuration YAML files",
+  "type": "object",
+  "required": ["resources"],
+  "additionalProperties": true,
+  "properties": {
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/resource"
+      }
+    }
+  },
+  "$defs": {
+    "resource": {
+      "type": "object",
+      "required": ["resourceType", "properties"],
+      "additionalProperties": true,
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "pattern": "^microsoft\\.(entra|teams|exchange|intune|defender|purview)\\.[a-z]+$",
+          "description": "UTCM resource type in lowercase dot notation (e.g., microsoft.entra.conditionalaccesspolicy)"
+        },
+        "properties": {
+          "$ref": "#/$defs/resourceProperties"
+        }
+      }
+    },
+    "resourceProperties": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "Id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "description": "Resource GUID from snapshot"
+        },
+        "DisplayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Display name of the resource"
+        },
+        "State": {
+          "type": "string",
+          "enum": ["enabled", "disabled", "enabledForReportingButNotEnforced"],
+          "description": "Resource state (UTCM enforces high-level state only)"
+        },
+        "Ensure": {
+          "type": "string",
+          "enum": ["Present", "Absent"],
+          "description": "Whether resource should exist or be removed"
+        }
+      }
+    },
+    "entraConditionalAccessPolicy": {
+      "allOf": [
+        { "$ref": "#/$defs/resource" },
+        {
+          "properties": {
+            "resourceType": { "const": "microsoft.entra.conditionalaccesspolicy" },
+            "properties": {
+              "required": ["Id", "DisplayName", "State", "Ensure"]
+            }
+          }
+        }
+      ]
+    },
+    "entraSecurityDefaults": {
+      "allOf": [
+        { "$ref": "#/$defs/resource" },
+        {
+          "properties": {
+            "resourceType": { "const": "microsoft.entra.securitydefaults" },
+            "properties": {
+              "properties": {
+                "IsEnabled": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "entraAuthenticationMethodPolicy": {
+      "allOf": [
+        { "$ref": "#/$defs/resource" },
+        {
+          "properties": {
+            "resourceType": { "const": "microsoft.entra.authenticationmethodpolicy" }
+          }
+        }
+      ]
+    },
+    "teamsMeetingPolicy": {
+      "allOf": [
+        { "$ref": "#/$defs/resource" },
+        {
+          "properties": {
+            "resourceType": { "const": "microsoft.teams.meetingpolicy" },
+            "properties": {
+              "properties": {
+                "AllowAnonymousUsersToJoinMeeting": { "type": "boolean" },
+                "AllowAnonymousUsersToStartMeeting": { "type": "boolean" },
+                "AllowMeetNow": { "type": "boolean" },
+                "AllowRecordingStorageOutsideRegion": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "teamsMessagingPolicy": {
+      "allOf": [
+        { "$ref": "#/$defs/resource" },
+        {
+          "properties": {
+            "resourceType": { "const": "microsoft.teams.messagingpolicy" },
+            "properties": {
+              "properties": {
+                "AllowGiphy": { "type": "boolean" },
+                "AllowMemes": { "type": "boolean" },
+                "AllowStickers": { "type": "boolean" },
+                "AllowUrlPreviews": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

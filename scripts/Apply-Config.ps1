@@ -7,6 +7,8 @@
     Reads YAML config files from <TenantConfigRoot>/<workload>/*.yaml,
     creates or updates a UTCM configurationMonitor with the specified baseline.
 
+    Supports automatic snapshot before apply and rollback on critical failures.
+
 .PARAMETER TenantConfigRoot
     Path to the tenant's config directory. Defaults to tenants/<TenantName>/config
     relative to the repo root, or 'config/' for backwards compatibility.
@@ -25,10 +27,23 @@
     Name for the UTCM monitor (8-32 chars, alphanumeric + spaces only).
     Defaults to "<TenantName> GitOps" (truncated to 32 chars if needed).
 
+.PARAMETER AutoSnapshot
+    If set, takes a snapshot before applying changes. Default: $true.
+    Snapshots are saved to tenants/<TenantName>/snapshots/pre-apply/
+
+.PARAMETER RollbackOnFailure
+    If set, restores baseline from pre-apply snapshot on critical errors.
+    Auth failures are excluded from automatic rollback. Default: $false.
+
+.PARAMETER ValidateSchema
+    If set, validates config files against JSON schema before applying.
+    Default: $true.
+
 .EXAMPLE
     ./Apply-Config.ps1 -TenantName kustomize
     ./Apply-Config.ps1 -TenantName kustomize -DryRun
-    ./Apply-Config.ps1 -TenantConfigRoot ./tenants/kustomize/config
+    ./Apply-Config.ps1 -TenantName kustomize -RollbackOnFailure
+    ./Apply-Config.ps1 -TenantConfigRoot ./tenants/kustomize/config -AutoSnapshot:$false
 #>
 param(
     [string]$TenantName       = '',
@@ -36,7 +51,10 @@ param(
     [string[]]$WorkloadTypes  = @(),
     [switch]$DryRun,
     # 8-32 chars, alphanumeric + spaces only (no hyphens, underscores, or special chars)
-    [string]$MonitorDisplayName = ''
+    [string]$MonitorDisplayName = '',
+    [bool]$AutoSnapshot       = $true,
+    [switch]$RollbackOnFailure,
+    [bool]$ValidateSchema     = $true
 )
 
 Set-StrictMode -Version Latest
@@ -49,6 +67,8 @@ function Write-Step([string]$Msg)    { Write-Host "`n▶ $Msg" -ForegroundColor 
 function Write-Success([string]$Msg) { Write-Host "  ✅ $Msg" -ForegroundColor Green }
 function Write-Info([string]$Msg)    { Write-Host "  ℹ  $Msg" -ForegroundColor White }
 function Write-DryRun([string]$Msg)  { Write-Host "  [DRY-RUN] $Msg" -ForegroundColor Magenta }
+function Write-Warn([string]$Msg)    { Write-Host "  ⚠️  $Msg" -ForegroundColor Yellow }
+function Write-Err([string]$Msg)     { Write-Host "  ❌ $Msg" -ForegroundColor Red }
 
 function ConvertFrom-YamlFile([string]$Path) {
     if ($Path -match '\.json$') {
@@ -60,6 +80,102 @@ function ConvertFrom-YamlFile([string]$Path) {
     }
     Import-Module powershell-yaml -ErrorAction Stop
     return Get-Content $Path -Raw | ConvertFrom-Yaml
+}
+
+# Error classification for rollback decisions
+function Test-CriticalError {
+    param([System.Management.Automation.ErrorRecord]$ErrorRecord)
+
+    $errorMessage = $ErrorRecord.Exception.Message
+
+    # Auth failures are NOT critical (don't rollback - nothing was changed)
+    if ($errorMessage -match 'Authentication|Unauthorized|401|InvalidCredentials|token') {
+        return $false
+    }
+
+    # Permission errors are NOT critical (nothing was changed)
+    if ($errorMessage -match 'Forbidden|403|AccessDenied|InsufficientPermissions') {
+        return $false
+    }
+
+    # Network errors are NOT critical (transient, retry later)
+    if ($errorMessage -match 'timeout|network|connection|503|502|504') {
+        return $false
+    }
+
+    # Everything else (partial apply, validation, API errors) is critical
+    return $true
+}
+
+function Save-PreApplySnapshot {
+    param(
+        [string]$TenantName,
+        [string]$Token
+    )
+
+    $snapshotDir = Join-Path $repoRoot 'tenants' $TenantName 'snapshots' 'pre-apply'
+    if (-not (Test-Path $snapshotDir)) {
+        New-Item -ItemType Directory -Path $snapshotDir -Force | Out-Null
+    }
+
+    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $snapshotFile = Join-Path $snapshotDir "pre-apply-$timestamp.json"
+
+    Write-Info "Taking pre-apply snapshot..."
+
+    # Get current monitor state
+    $safeName = ($TenantName -replace '[^a-zA-Z0-9 ]', ' ').Trim()
+    $prefix = $safeName.Substring(0,1).ToUpper() + $safeName.Substring(1)
+
+    $monitors = Invoke-GraphRequest -Endpoint '/admin/configurationManagement/configurationMonitors' -Token $Token
+    $existingMonitor = $monitors.value | Where-Object { $_.displayName -like "$prefix*" } | Select-Object -First 1
+
+    if ($existingMonitor) {
+        # Save current baseline
+        $monitorDetail = Invoke-GraphRequest `
+            -Endpoint "/admin/configurationManagement/configurationMonitors/$($existingMonitor.id)" `
+            -Token $Token
+
+        $snapshot = @{
+            id = "pre-apply-$timestamp"
+            displayName = "Pre-apply snapshot $timestamp"
+            monitorId = $existingMonitor.id
+            createdDateTime = (Get-Date).ToString('o')
+            resources = $monitorDetail.baseline.resources
+        }
+
+        $snapshot | ConvertTo-Json -Depth 20 | Set-Content $snapshotFile -Encoding utf8
+        Write-Success "Pre-apply snapshot saved: $snapshotFile"
+        return $snapshotFile
+    }
+    else {
+        Write-Info "No existing monitor found. Skipping pre-apply snapshot."
+        return $null
+    }
+}
+
+function Invoke-Rollback {
+    param(
+        [string]$TenantName,
+        [string]$SnapshotFile
+    )
+
+    if (-not $SnapshotFile -or -not (Test-Path $SnapshotFile)) {
+        Write-Warn "No pre-apply snapshot available for rollback."
+        return
+    }
+
+    Write-Err "Critical error detected. Initiating rollback..."
+
+    try {
+        $restoreScript = Join-Path $PSScriptRoot 'Restore-Baseline.ps1'
+        & $restoreScript -TenantName $TenantName -SnapshotId (Split-Path $SnapshotFile -LeafBase) -Force
+        Write-Success "Rollback completed successfully."
+    }
+    catch {
+        Write-Err "Rollback failed: $_"
+        Write-Err "Manual intervention required. Snapshot file: $SnapshotFile"
+    }
 }
 #endregion
 
@@ -125,11 +241,43 @@ Write-Info "Tenant         : $TenantName"
 Write-Info "Config root    : $TenantConfigRoot"
 Write-Info "Workloads      : $($WorkloadTypes -join ', ')"
 Write-Info "Monitor name   : $MonitorDisplayName"
+Write-Info "Auto-snapshot  : $AutoSnapshot"
+Write-Info "Rollback       : $RollbackOnFailure"
 if ($DryRun) { Write-Info "DRY-RUN mode — no changes will be made." }
+
+# --- Schema validation (if enabled) ---
+if ($ValidateSchema -and -not $DryRun) {
+    $validateScript = Join-Path $PSScriptRoot 'Validate-Schema.ps1'
+    if (Test-Path $validateScript) {
+        Write-Step "Validating configuration schema..."
+        try {
+            & $validateScript -Path $TenantConfigRoot
+            Write-Success "Schema validation passed."
+        }
+        catch {
+            Write-Err "Schema validation failed: $_"
+            throw "Configuration validation failed. Fix errors before applying."
+        }
+    }
+}
 
 Write-Step "Authenticating to Microsoft Graph..."
 $token = Get-GraphAccessToken
 Write-Success "Authenticated."
+
+# --- Pre-apply snapshot (if enabled) ---
+$preApplySnapshotFile = $null
+if ($AutoSnapshot -and -not $DryRun) {
+    try {
+        $preApplySnapshotFile = Save-PreApplySnapshot -TenantName $TenantName -Token $token
+    }
+    catch {
+        Write-Warn "Failed to take pre-apply snapshot: $_"
+        if ($RollbackOnFailure) {
+            Write-Warn "Rollback will not be available for this run."
+        }
+    }
+}
 
 # --- Load resources from config files ---
 $baselineResources = [System.Collections.Generic.List[object]]::new()
@@ -207,20 +355,37 @@ $monitorBody = @{
     }
 }
 
-if ($existingMonitor) {
-    Write-Info "Updating existing monitor (ID: $($existingMonitor.id))..."
-    Invoke-GraphRequest -Method PATCH `
-        -Endpoint "/admin/configurationManagement/configurationMonitors/$($existingMonitor.id)" `
-        -Body $monitorBody `
-        -Token $token | Out-Null
-    Write-Success "Monitor updated."
-} else {
-    Write-Info "Creating new monitor..."
-    $newMonitor = Invoke-GraphRequest -Method POST `
-        -Endpoint '/admin/configurationManagement/configurationMonitors' `
-        -Body $monitorBody `
-        -Token $token
-    Write-Success "Monitor created (ID: $($newMonitor.id))."
+# --- Apply changes with rollback support ---
+$applyError = $null
+try {
+    if ($existingMonitor) {
+        Write-Info "Updating existing monitor (ID: $($existingMonitor.id))..."
+        Invoke-GraphRequest -Method PATCH `
+            -Endpoint "/admin/configurationManagement/configurationMonitors/$($existingMonitor.id)" `
+            -Body $monitorBody `
+            -Token $token | Out-Null
+        Write-Success "Monitor updated."
+    } else {
+        Write-Info "Creating new monitor..."
+        $newMonitor = Invoke-GraphRequest -Method POST `
+            -Endpoint '/admin/configurationManagement/configurationMonitors' `
+            -Body $monitorBody `
+            -Token $token
+        Write-Success "Monitor created (ID: $($newMonitor.id))."
+    }
+}
+catch {
+    $applyError = $_
+    Write-Err "Failed to apply configuration: $($_.Exception.Message)"
+
+    if ($RollbackOnFailure -and (Test-CriticalError -ErrorRecord $_)) {
+        Invoke-Rollback -TenantName $TenantName -SnapshotFile $preApplySnapshotFile
+    }
+    elseif ($RollbackOnFailure) {
+        Write-Info "Error classified as non-critical. Skipping rollback."
+    }
+
+    throw
 }
 
 Write-Host "`n🎉 Config applied! Monitor '$MonitorDisplayName' is active and will evaluate every 6 hours." -ForegroundColor Green

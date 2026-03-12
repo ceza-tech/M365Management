@@ -1,0 +1,45 @@
+# Gitleaks configuration for M365Management
+# Reference: https://github.com/gitleaks/gitleaks
+
+title = "M365Management Secret Scanning"
+
+[extend]
+# Use the default gitleaks rules as a base
+useDefault = true
+
+# Additional rules specific to this project
+[[rules]]
+id = "azure-client-secret"
+description = "Azure Client Secret"
+regex = '''(?i)(client[_-]?secret|azure[_-]?secret)\s*[=:]\s*['"]?([a-zA-Z0-9~_.-]{34,})['"]?'''
+tags = ["azure", "secret"]
+
+[[rules]]
+id = "azure-tenant-id"
+description = "Azure Tenant ID in code (should be in env vars)"
+regex = '''(?i)(tenant[_-]?id)\s*[=:]\s*['"]?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})['"]?'''
+tags = ["azure", "config"]
+# This is a warning - tenant IDs aren't strictly secret but shouldn't be hardcoded
+
+[[rules]]
+id = "graph-access-token"
+description = "Microsoft Graph Access Token"
+regex = '''eyJ0eXAiOiJKV1QiLCJhbGciOi[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+'''
+tags = ["azure", "token"]
+
+# Paths to ignore
+[allowlist]
+paths = [
+    '''\.env\.example$''',
+    '''docs/.*\.md$''',
+    '''snapshots/.*\.json$''',
+    '''schemas/.*\.json$''',
+    '''\.gitleaks\.toml$''',
+]
+
+# Specific strings to ignore (e.g., placeholder GUIDs)
+regexes = [
+    '''00000000-0000-0000-0000-00000000000[0-9]''',  # Placeholder GUIDs in examples
+    '''<your-.*>''',                                   # Placeholder text
+    '''REPLACE_WITH_.*''',                             # Placeholder markers
+]
