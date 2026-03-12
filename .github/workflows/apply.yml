@@ -92,6 +92,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          USE_OIDC: 'false'
         run: |
           ./scripts/Apply-Config.ps1 -TenantName '${{ matrix.tenant }}' -DryRun
           Write-Host "::notice::Dry-run complete for tenant '${{ matrix.tenant }}'. No changes applied."
@@ -103,6 +104,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          USE_OIDC: 'false'
         run: |
           ./scripts/Apply-Config.ps1 -TenantName '${{ matrix.tenant }}'
           Write-Host "::notice::Configuration applied for tenant '${{ matrix.tenant }}'."
@@ -114,6 +116,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          USE_OIDC: 'false'
         run: |
           Start-Sleep -Seconds 30
           ./scripts/Get-Drifts.ps1 -TenantName '${{ matrix.tenant }}'

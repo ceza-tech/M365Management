@@ -67,6 +67,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          USE_OIDC: 'false'
         run: |
           $driftsJson = ./scripts/Get-Drifts.ps1 -TenantName '${{ matrix.tenant }}' -OutputFormat json
           $drifts = $driftsJson | ConvertFrom-Json
