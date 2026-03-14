@@ -33,7 +33,7 @@ jobs:
     outputs:
       tenants: ${{ steps.list.outputs.tenants }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: List tenants
         id: list
         shell: pwsh
@@ -57,7 +57,7 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Take snapshot
         shell: pwsh
@@ -83,7 +83,7 @@ jobs:
           ./scripts/Take-Snapshot.ps1 -Resources $resources -DisplayName $displayName -OutputDir $outDir
 
       - name: Upload snapshot as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: snapshot-${{ matrix.tenant }}-${{ github.run_number }}
           path: tenants/${{ matrix.tenant }}/snapshots/

@@ -26,7 +26,7 @@ jobs:
     outputs:
       tenants: ${{ steps.list.outputs.tenants }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: List tenants
         id: list
         shell: pwsh
@@ -52,7 +52,7 @@ jobs:
       drift_count: ${{ steps.check.outputs.drift_count }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install required PowerShell modules
         shell: pwsh
@@ -94,7 +94,7 @@ jobs:
 
       - name: Create or update GitHub Issue on drift detected
         if: steps.check.outputs.drift_count != '0'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const tenant     = '${{ matrix.tenant }}';
@@ -131,7 +131,7 @@ jobs:
 
       - name: Close drift issue if resolved
         if: steps.check.outputs.drift_count == '0'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const tenant = '${{ matrix.tenant }}';
