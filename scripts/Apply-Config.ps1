@@ -298,7 +298,14 @@ foreach ($workload in $WorkloadTypes) {
     foreach ($file in $configFiles) {
         Write-Info "Loading: $($file.Name)"
         $config    = ConvertFrom-YamlFile -Path $file.FullName
-        $resources = if ($config.resources) { $config.resources } else { @($config) }
+        if ($null -eq $config.resources) {
+            $resources = @($config)
+        } elseif ($config.resources.Count -eq 0) {
+            Write-Info "  Skipping $($file.Name) — resources array is empty."
+            continue
+        } else {
+            $resources = $config.resources
+        }
         foreach ($resource in $resources) { $baselineResources.Add($resource) }
     }
 }
@@ -335,13 +342,17 @@ $normalizedResources = $baselineResources | ForEach-Object {
         $rType    = $r['resourceType']
         $rProps   = if ($r['properties']) { [hashtable]($r['properties'].Clone()) } else { @{} }
         if ($r['id'] -and -not $rProps['Id']) { $rProps['Id'] = $r['id'] }
-        $rDisplayName = $rProps['DisplayName'] ?? $rProps['Identity'] ?? $rProps['Id'] ?? $rType
+        $nameFromProps = $rProps['DisplayName'] ?? $rProps['Identity'] ?? $rProps['Id'] ?? ''
+        $typeShort     = $rType -replace '^.*\.', ''
+        $rDisplayName  = if ($nameFromProps) { "${typeShort}: ${nameFromProps}" } else { $typeShort }
         if ($rType -like 'microsoft.teams.*') { $rProps.Remove('DisplayName') }
         @{ displayName = $rDisplayName; resourceType = $rType; properties = $rProps }
     } else {
         $rProps   = if ($r.properties) { $r.properties | ConvertTo-Json -Depth 10 | ConvertFrom-Json -AsHashtable } else { @{} }
         if ($r.id -and -not $rProps['Id']) { $rProps['Id'] = $r.id }
-        $rDisplayName = $rProps['DisplayName'] ?? $rProps['Identity'] ?? $rProps['Id'] ?? $r.resourceType
+        $nameFromProps = $rProps['DisplayName'] ?? $rProps['Identity'] ?? $rProps['Id'] ?? ''
+        $typeShort     = $r.resourceType -replace '^.*\.', ''
+        $rDisplayName  = if ($nameFromProps) { "${typeShort}: ${nameFromProps}" } else { $typeShort }
         if ($r.resourceType -like 'microsoft.teams.*') { $rProps.Remove('DisplayName') }
         @{ displayName = $rDisplayName; resourceType = $r.resourceType; properties = $rProps }
     }
