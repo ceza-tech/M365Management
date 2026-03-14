@@ -67,7 +67,7 @@ function Get-GraphAccessToken {
 
     # Load from .env if credentials not set
     if (-not $TenantId -or -not $ClientId) {
-        $envFile = Join-Path (Split-Path $PSScriptRoot -Parent) '.env'
+        $envFile = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '.env'
         if (Test-Path $envFile) {
             Get-Content $envFile | Where-Object { $_ -match '^\s*[^#]' } | ForEach-Object {
                 $parts = $_ -split '=', 2
