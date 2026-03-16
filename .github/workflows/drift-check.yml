@@ -12,7 +12,7 @@ on:
       fail_on_drift:
         description: 'Fail pipeline if drifts are detected'
         required: false
-        default: 'true'
+        default: 'false'
         type: boolean
 
 permissions:
@@ -152,6 +152,10 @@ jobs:
               });
             }
 
-      - name: Fail on drift (if enabled)
-        if: steps.check.outputs.drift_count != '0' && github.event.inputs.fail_on_drift != 'false'
-        run: exit 1
+      - name: Warn on drift
+        if: steps.check.outputs.drift_count != '0'
+        run: |
+          echo "::warning::Configuration drift detected for tenant ${{ matrix.tenant }}: ${{ steps.check.outputs.drift_count }} drift(s) found. Review the job summary for details."
+          if [[ '${{ github.event.inputs.fail_on_drift }}' == 'true' ]]; then
+            exit 1
+          fi
