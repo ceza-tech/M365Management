@@ -131,7 +131,97 @@ function Test-JsonSchema {
             }
 
             # Check for unknown properties (warn only unless strict)
-            $knownProps = @('Id', 'DisplayName', 'State', 'Ensure', 'Description', 'IsEnabled')
+            # Common properties shared across workloads
+            $knownProps = @(
+                'Id', 'DisplayName', 'State', 'Ensure', 'Description', 'IsEnabled',
+                'Identity', 'IsSingleInstance', 'MakeDefault', 'Enabled',
+                # Entra — authorization policy
+                'GuestUserRole', 'AllowInvitesFrom',
+                'DefaultUserRoleAllowedToCreateApps', 'DefaultUserRoleAllowedToCreateSecurityGroups',
+                'DefaultUserRoleAllowedToCreateTenants', 'DefaultUserRoleAllowedToReadOtherUsers',
+                'DefaultUserRoleAllowedToReadBitlockerKeysForOwnedDevice',
+                'AllowedToUseSSPR', 'AllowedToSignUpEmailBasedSubscriptions',
+                'AllowEmailVerifiedUsersToJoinOrganization', 'BlockMsolPowerShell',
+                'PermissionGrantPolicyIdsAssignedToDefaultUserRole',
+                # Entra — authentication methods / strength
+                'RegistrationEnforcement', 'AllowedCombinations',
+                # Entra — cross-tenant / external identity
+                'AllowedCloudEndpoints', 'AllowExternalIdentitiesToLeave',
+                'AllowDeletedIdentitiesDataRemoval',
+                # Entra — named locations
+                'OdataType', 'IsTrusted', 'IpRanges',
+                # Teams — calling policy
+                'AllowPrivateCalling', 'AllowWebPSTNCalling', 'AllowVoicemail',
+                'AllowCallGroups', 'AllowDelegation', 'AllowCallForwardingToUser',
+                'AllowCallForwardingToPhone', 'PreventTollBypass',
+                'BusyOnBusyEnabledType', 'MusicOnHoldEnabledType',
+                # Teams — channels policy
+                'AllowOrgWideTeamCreation', 'AllowPrivateChannelCreation',
+                'AllowSharedChannelCreation', 'AllowUserToParticipateInExternalSharedChannel',
+                'AllowChannelSharingToExternalUser',
+                # Teams — federation / external access
+                'AllowFederatedUsers', 'AllowPublicUsers', 'AllowTeamsConsumer',
+                'AllowTeamsConsumerInbound', 'TreatDiscoveredPartnersAsUnverified',
+                # Teams — guest meeting / calling
+                'AllowIPVideo', 'ScreenSharingMode', 'AllowMeetNow',
+                # Teams — guest / messaging policy
+                'AllowUserChat', 'AllowUserEditMessage', 'AllowUserDeleteMessage',
+                'AllowUserDeleteChat', 'AllowImmersiveReader', 'AllowGiphy',
+                'GiphyRatingType', 'AllowMemes', 'AllowStickers',
+                # Teams — meeting policy
+                'AllowAnonymousUsersToJoinMeeting', 'AllowAnonymousUsersToStartMeeting',
+                'AllowExternalParticipantGiveRequestControl', 'AllowMeetingRegistration',
+                'AllowNetworkConfigurationSettingsLookup', 'AllowOrganizersToOverrideLobbySettings',
+                'AllowOutlookAddIn', 'AllowParticipantGiveRequestControl',
+                'AllowPrivateMeetingScheduling', 'AllowRecordingStorageOutsideRegion',
+                'AllowTranscription', 'AutoAdmittedUsers', 'VideoFiltersMode',
+                # Teams — messaging policy
+                'AllowOwnerDeleteMessage', 'AllowPriorityMessages', 'AllowSmartCompose',
+                'AllowSmartReply', 'AllowUrlPreviews', 'ReadReceiptsEnabledType',
+                # Exchange — anti-phishing policy
+                'EnableSpoofIntelligence', 'EnableUnauthenticatedSender', 'EnableViaTag',
+                'SpoofQuarantineTag', 'HonorDmarcPolicy', 'DmarcRejectAction', 'DmarcQuarantineAction',
+                'EnableMailboxIntelligence', 'EnableMailboxIntelligenceProtection',
+                'MailboxIntelligenceProtectionAction', 'MailboxIntelligenceQuarantineTag',
+                'MailboxIntelligenceProtectionActionRecipients',
+                'ImpersonationProtectionState', 'EnableOrganizationDomainsProtection',
+                'EnableTargetedDomainsProtection', 'EnableTargetedUserProtection',
+                'AuthenticationFailAction', 'PhishThresholdLevel',
+                'EnableFirstContactSafetyTips', 'EnableSimilarUsersSafetyTips',
+                'EnableSimilarDomainsSafetyTips', 'EnableUnusualCharactersSafetyTips',
+                'TargetedDomainQuarantineTag', 'TargetedUserQuarantineTag',
+                'TargetedDomainActionRecipients', 'TargetedUserActionRecipients',
+                'TargetedUsersToProtect', 'TargetedDomainsToProtect',
+                'TargetedDomainProtectionAction', 'TargetedUserProtectionAction',
+                'ExcludedSenders', 'ExcludedDomains',
+                # Exchange — anti-spam (inbound)
+                'SpamAction', 'HighConfidenceSpamAction', 'PhishSpamAction', 'HighConfidencePhishAction',
+                'SpamQuarantineTag', 'BulkQuarantineTag', 'HighConfidenceSpamQuarantineTag',
+                'HighConfidencePhishQuarantineTag', 'PhishQuarantineTag',
+                'BulkThreshold', 'MarkAsSpamBulkMail', 'SpamZapEnabled', 'PhishZapEnabled',
+                'InlineSafetyTipsEnabled',
+                'MarkAsSpamSpfRecordHardFail', 'MarkAsSpamEmptyMessages',
+                'MarkAsSpamFromAddressAuthFail', 'MarkAsSpamNdrBackscatter',
+                'MarkAsSpamObjectTagsInHtml', 'MarkAsSpamEmbedTagsInHtml',
+                'MarkAsSpamFormTagsInHtml', 'MarkAsSpamFramesInHtml',
+                'MarkAsSpamJavaScriptInHtml', 'MarkAsSpamSensitiveWordList',
+                'IncreaseScoreWithBizOrInfoUrls', 'IncreaseScoreWithImageLinks',
+                'IncreaseScoreWithNumericIps',
+                'EnableLanguageBlockList', 'EnableRegionBlockList',
+                'LanguageBlockList', 'RegionBlockList',
+                'AllowedSenders', 'AllowedSenderDomains', 'BlockedSenders', 'BlockedSenderDomains',
+                'TestModeBccToRecipients', 'RedirectToRecipients',
+                'QuarantineRetentionPeriod', 'DownloadLink', 'TestModeAction', 'IntraOrgFilterState',
+                # Exchange — anti-spam (outbound)
+                'RecipientLimitExternalPerHour', 'RecipientLimitInternalPerHour', 'RecipientLimitPerDay',
+                'ActionWhenThresholdReached', 'AutoForwardingMode',
+                'NotifyOutboundSpam', 'BccSuspiciousOutboundMail',
+                'NotifyOutboundSpamRecipients', 'BccSuspiciousOutboundAdditionalRecipients',
+                # Exchange — malware filter policy
+                'EnableFileFilter', 'FileTypeAction', 'FileTypes', 'ZapEnabled', 'QuarantineTag',
+                'CustomNotifications', 'EnableInternalSenderAdminNotifications',
+                'EnableExternalSenderAdminNotifications'
+            )
             foreach ($propName in $props.Keys) {
                 if ($propName -notin $knownProps) {
                     $warnings += "${prefix}.properties.${propName} - Unknown property (may not be enforced by UTCM)"

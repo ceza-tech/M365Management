@@ -37,14 +37,21 @@
       "properties": {
         "Id": {
           "type": "string",
-          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-          "description": "Resource GUID from snapshot"
+          "description": "Resource identifier from snapshot. Accepts: GUID (e.g. '12345678-1234-1234-1234-123456789012'), well-known singleton IDs (e.g. 'authenticationMethodsPolicy', 'securityDefaults', 'authorizationPolicy'), or policy identity strings (e.g. 'Global')."
+        },
+        "Identity": {
+          "type": "string",
+          "description": "Policy instance identity (used by Teams and Exchange policies instead of Id)"
         },
         "DisplayName": {
           "type": "string",
           "minLength": 1,
           "maxLength": 256,
           "description": "Display name of the resource"
+        },
+        "Description": {
+          "type": "string",
+          "description": "Description of the resource"
         },
         "State": {
           "type": "string",
@@ -55,8 +62,290 @@
           "type": "string",
           "enum": ["Present", "Absent"],
           "description": "Whether resource should exist or be removed"
+        },
+        "IsEnabled": {
+          "type": "boolean",
+          "description": "Whether the resource is enabled (used by Security Defaults)"
+        },
+        "IsSingleInstance": {
+          "type": "string",
+          "description": "Singleton policy marker (always 'Yes' for singleton resources)"
+        },
+        "MakeDefault": {
+          "type": "boolean",
+          "description": "Whether this policy is the default (Exchange policies)"
+        },
+        "Enabled": {
+          "type": "boolean",
+          "description": "Whether the policy is enabled (Exchange policies)"
         }
       }
+    },
+    "entraAuthorizationPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "GuestUserRole": { "type": "string" },
+            "AllowInvitesFrom": { "type": "string" },
+            "DefaultUserRoleAllowedToCreateApps": { "type": "boolean" },
+            "DefaultUserRoleAllowedToCreateSecurityGroups": { "type": "boolean" },
+            "DefaultUserRoleAllowedToCreateTenants": { "type": "boolean" },
+            "DefaultUserRoleAllowedToReadOtherUsers": { "type": "boolean" },
+            "DefaultUserRoleAllowedToReadBitlockerKeysForOwnedDevice": { "type": "boolean" },
+            "AllowedToUseSSPR": { "type": "boolean" },
+            "AllowedToSignUpEmailBasedSubscriptions": { "type": "boolean" },
+            "AllowEmailVerifiedUsersToJoinOrganization": { "type": "boolean" },
+            "BlockMsolPowerShell": { "type": "boolean" },
+            "PermissionGrantPolicyIdsAssignedToDefaultUserRole": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "entraNamedLocationPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "OdataType": { "type": "string" },
+            "IsTrusted": { "type": "boolean" },
+            "IpRanges": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "entraExternalIdentityPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "AllowExternalIdentitiesToLeave": { "type": "boolean" },
+            "AllowDeletedIdentitiesDataRemoval": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "teamsCallingPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "AllowPrivateCalling": { "type": "boolean" },
+            "AllowWebPSTNCalling": { "type": "boolean" },
+            "AllowVoicemail": { "type": "string" },
+            "AllowCallGroups": { "type": "boolean" },
+            "AllowDelegation": { "type": "boolean" },
+            "AllowCallForwardingToUser": { "type": "boolean" },
+            "AllowCallForwardingToPhone": { "type": "boolean" },
+            "PreventTollBypass": { "type": "boolean" },
+            "BusyOnBusyEnabledType": { "type": "string" },
+            "MusicOnHoldEnabledType": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "teamsChannelsPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "AllowOrgWideTeamCreation": { "type": "boolean" },
+            "AllowPrivateChannelCreation": { "type": "boolean" },
+            "AllowSharedChannelCreation": { "type": "boolean" },
+            "AllowUserToParticipateInExternalSharedChannel": { "type": "boolean" },
+            "AllowChannelSharingToExternalUser": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "teamsFederationConfigurationProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "AllowFederatedUsers": { "type": "boolean" },
+            "AllowPublicUsers": { "type": "boolean" },
+            "AllowTeamsConsumer": { "type": "boolean" },
+            "AllowTeamsConsumerInbound": { "type": "boolean" },
+            "TreatDiscoveredPartnersAsUnverified": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "teamsMeetingPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "AllowAnonymousUsersToJoinMeeting": { "type": "boolean" },
+            "AllowAnonymousUsersToStartMeeting": { "type": "boolean" },
+            "AllowExternalParticipantGiveRequestControl": { "type": "boolean" },
+            "AllowMeetingRegistration": { "type": "boolean" },
+            "AllowNetworkConfigurationSettingsLookup": { "type": "boolean" },
+            "AllowOrganizersToOverrideLobbySettings": { "type": "boolean" },
+            "AllowOutlookAddIn": { "type": "boolean" },
+            "AllowParticipantGiveRequestControl": { "type": "boolean" },
+            "AllowPrivateMeetingScheduling": { "type": "boolean" },
+            "AllowRecordingStorageOutsideRegion": { "type": "boolean" },
+            "AllowTranscription": { "type": "boolean" },
+            "AllowMeetNow": { "type": "boolean" },
+            "AllowIPVideo": { "type": "boolean" },
+            "ScreenSharingMode": { "type": "string" },
+            "AutoAdmittedUsers": { "type": "string" },
+            "VideoFiltersMode": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "teamsMessagingPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "AllowGiphy": { "type": "boolean" },
+            "AllowImmersiveReader": { "type": "boolean" },
+            "AllowMemes": { "type": "boolean" },
+            "AllowOwnerDeleteMessage": { "type": "boolean" },
+            "AllowPriorityMessages": { "type": "boolean" },
+            "AllowSmartCompose": { "type": "boolean" },
+            "AllowSmartReply": { "type": "boolean" },
+            "AllowStickers": { "type": "boolean" },
+            "AllowUrlPreviews": { "type": "boolean" },
+            "AllowUserChat": { "type": "boolean" },
+            "AllowUserDeleteChat": { "type": "boolean" },
+            "AllowUserDeleteMessage": { "type": "boolean" },
+            "AllowUserEditMessage": { "type": "boolean" },
+            "GiphyRatingType": { "type": "string" },
+            "ReadReceiptsEnabledType": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "exchangeAntiPhishPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "EnableSpoofIntelligence": { "type": "boolean" },
+            "EnableUnauthenticatedSender": { "type": "boolean" },
+            "EnableViaTag": { "type": "boolean" },
+            "SpoofQuarantineTag": { "type": "string" },
+            "HonorDmarcPolicy": { "type": "boolean" },
+            "DmarcRejectAction": { "type": "string" },
+            "DmarcQuarantineAction": { "type": "string" },
+            "EnableMailboxIntelligence": { "type": "boolean" },
+            "EnableMailboxIntelligenceProtection": { "type": "boolean" },
+            "MailboxIntelligenceProtectionAction": { "type": "string" },
+            "MailboxIntelligenceQuarantineTag": { "type": "string" },
+            "MailboxIntelligenceProtectionActionRecipients": { "type": "array", "items": { "type": "string" } },
+            "ImpersonationProtectionState": { "type": "string" },
+            "EnableOrganizationDomainsProtection": { "type": "boolean" },
+            "EnableTargetedDomainsProtection": { "type": "boolean" },
+            "EnableTargetedUserProtection": { "type": "boolean" },
+            "AuthenticationFailAction": { "type": "string" },
+            "PhishThresholdLevel": { "type": "integer" },
+            "EnableFirstContactSafetyTips": { "type": "boolean" },
+            "EnableSimilarUsersSafetyTips": { "type": "boolean" },
+            "EnableSimilarDomainsSafetyTips": { "type": "boolean" },
+            "EnableUnusualCharactersSafetyTips": { "type": "boolean" },
+            "TargetedDomainQuarantineTag": { "type": "string" },
+            "TargetedUserQuarantineTag": { "type": "string" },
+            "TargetedDomainActionRecipients": { "type": "array", "items": { "type": "string" } },
+            "TargetedUserActionRecipients": { "type": "array", "items": { "type": "string" } },
+            "TargetedUsersToProtect": { "type": "array", "items": { "type": "string" } },
+            "TargetedDomainsToProtect": { "type": "array", "items": { "type": "string" } },
+            "TargetedDomainProtectionAction": { "type": "string" },
+            "TargetedUserProtectionAction": { "type": "string" },
+            "ExcludedSenders": { "type": "array", "items": { "type": "string" } },
+            "ExcludedDomains": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "exchangeAntiSpamPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "SpamAction": { "type": "string" },
+            "HighConfidenceSpamAction": { "type": "string" },
+            "PhishSpamAction": { "type": "string" },
+            "HighConfidencePhishAction": { "type": "string" },
+            "SpamQuarantineTag": { "type": "string" },
+            "BulkQuarantineTag": { "type": "string" },
+            "HighConfidenceSpamQuarantineTag": { "type": "string" },
+            "HighConfidencePhishQuarantineTag": { "type": "string" },
+            "PhishQuarantineTag": { "type": "string" },
+            "BulkThreshold": { "type": "integer" },
+            "MarkAsSpamBulkMail": { "type": "string" },
+            "SpamZapEnabled": { "type": "boolean" },
+            "PhishZapEnabled": { "type": "boolean" },
+            "InlineSafetyTipsEnabled": { "type": "boolean" },
+            "MarkAsSpamSpfRecordHardFail": { "type": "string" },
+            "MarkAsSpamEmptyMessages": { "type": "string" },
+            "MarkAsSpamFromAddressAuthFail": { "type": "string" },
+            "MarkAsSpamNdrBackscatter": { "type": "string" },
+            "MarkAsSpamObjectTagsInHtml": { "type": "string" },
+            "MarkAsSpamEmbedTagsInHtml": { "type": "string" },
+            "MarkAsSpamFormTagsInHtml": { "type": "string" },
+            "MarkAsSpamFramesInHtml": { "type": "string" },
+            "MarkAsSpamJavaScriptInHtml": { "type": "string" },
+            "MarkAsSpamSensitiveWordList": { "type": "string" },
+            "IncreaseScoreWithBizOrInfoUrls": { "type": "string" },
+            "IncreaseScoreWithImageLinks": { "type": "string" },
+            "IncreaseScoreWithNumericIps": { "type": "string" },
+            "EnableLanguageBlockList": { "type": "boolean" },
+            "EnableRegionBlockList": { "type": "boolean" },
+            "LanguageBlockList": { "type": "array", "items": { "type": "string" } },
+            "RegionBlockList": { "type": "array", "items": { "type": "string" } },
+            "AllowedSenders": { "type": "array", "items": { "type": "string" } },
+            "AllowedSenderDomains": { "type": "array", "items": { "type": "string" } },
+            "BlockedSenders": { "type": "array", "items": { "type": "string" } },
+            "BlockedSenderDomains": { "type": "array", "items": { "type": "string" } },
+            "TestModeBccToRecipients": { "type": "array", "items": { "type": "string" } },
+            "RedirectToRecipients": { "type": "array", "items": { "type": "string" } },
+            "QuarantineRetentionPeriod": { "type": "integer" },
+            "DownloadLink": { "type": "boolean" },
+            "TestModeAction": { "type": "string" },
+            "IntraOrgFilterState": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "exchangeOutboundSpamPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "RecipientLimitExternalPerHour": { "type": "integer" },
+            "RecipientLimitInternalPerHour": { "type": "integer" },
+            "RecipientLimitPerDay": { "type": "integer" },
+            "ActionWhenThresholdReached": { "type": "string" },
+            "AutoForwardingMode": { "type": "string" },
+            "NotifyOutboundSpam": { "type": "boolean" },
+            "BccSuspiciousOutboundMail": { "type": "boolean" },
+            "NotifyOutboundSpamRecipients": { "type": "array", "items": { "type": "string" } },
+            "BccSuspiciousOutboundAdditionalRecipients": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "exchangeMalwareFilterPolicyProperties": {
+      "allOf": [
+        { "$ref": "#/$defs/resourceProperties" },
+        {
+          "properties": {
+            "EnableFileFilter": { "type": "boolean" },
+            "FileTypeAction": { "type": "string" },
+            "FileTypes": { "type": "array", "items": { "type": "string" } },
+            "ZapEnabled": { "type": "boolean" },
+            "QuarantineTag": { "type": "string" },
+            "CustomNotifications": { "type": "boolean" },
+            "EnableInternalSenderAdminNotifications": { "type": "boolean" },
+            "EnableExternalSenderAdminNotifications": { "type": "boolean" }
+          }
+        }
+      ]
     },
     "entraConditionalAccessPolicy": {
       "allOf": [
