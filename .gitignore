@@ -23,3 +23,5 @@ snapshots/output/
 # Logs
 *.log
 logs/
+tests/coverage/
+tests/results/
