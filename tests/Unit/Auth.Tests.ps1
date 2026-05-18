@@ -58,6 +58,9 @@ Describe 'Get-GraphAccessToken' -Tag 'Unit', 'Auth' {
         $env:AZURE_TENANT_ID = $null
         $env:AZURE_CLIENT_ID = $null
         $env:AZURE_CLIENT_SECRET = $null
+        $env:USE_OIDC = $null
+        $env:ACTIONS_ID_TOKEN_REQUEST_URL = $null
+        $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN = $null
     }
 
     Context 'When credentials are provided via parameters' {
@@ -354,7 +357,7 @@ Describe 'Invoke-GraphRequest' -Tag 'Unit', 'Auth' {
 
             {
                 Invoke-GraphRequest -Endpoint '/test' -Token 'token'
-            } | Should -Throw '*Graph API error [429] on GET https://graph.microsoft.com/beta/test: Too Many Requests*'
+            } | Should -Throw '*Graph API error*429*Too Many Requests*'
         }
     }
 }

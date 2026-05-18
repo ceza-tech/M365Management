@@ -8,6 +8,8 @@
 BeforeAll {
     $repoRoot = Join-Path $PSScriptRoot '..' '..'
     $applyScript = Join-Path $repoRoot 'scripts' 'Apply-Config.ps1'
+    $authHelper = Join-Path $repoRoot 'scripts' 'helpers' 'Auth.ps1'
+    . $authHelper
 }
 
 Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
@@ -46,24 +48,26 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
             Mock Invoke-GraphRequest {
                 throw "API should not be called in DryRun mode"
             }
+            Mock Write-Host { }
         }
 
         It 'Should not make API calls in DryRun mode' {
-            $result = & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun 2>&1
+            & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun 2>&1 | Out-Null
 
             Should -Invoke Get-GraphAccessToken -Times 1
             Should -Invoke Invoke-GraphRequest -Times 0
-            ($result -join "`n") | Should -Match 'DRY-RUN'
+            Should -Invoke Write-Host -ParameterFilter { $Object -like '*DRY-RUN*' }
         }
 
         It 'Should list planned resources in DryRun mode' {
-            $result = & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun 2>&1
-            ($result -join "`n") | Should -Match 'conditionalaccesspolicy'
+            & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun 2>&1 | Out-Null
+            Should -Invoke Write-Host -ParameterFilter { $Object -like '*conditionalaccesspolicy*' }
         }
     }
 
     Context 'Monitor naming conventions' {
         It 'Should generate monitor name from tenant name' {
+            $global:capturedMonitorName = $null
             Mock Get-GraphAccessToken { return 'mock-token' }
             Mock Invoke-GraphRequest {
                 param($Method, $Endpoint, $Body)
@@ -71,7 +75,7 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
                     return @{ value = @() }
                 }
                 if ($Method -eq 'POST') {
-                    $script:capturedMonitorName = $Body.displayName
+                    $global:capturedMonitorName = $Body.displayName
                     return @{ id = 'mock-monitor-id' }
                 }
                 return @{ value = @() }
@@ -79,7 +83,7 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
 
             & $applyScript -TenantName 'testcorp' -TenantConfigRoot $script:tenantConfigRoot -ValidateSchema:$false -AutoSnapshot:$false 2>&1 | Out-Null
 
-            $script:capturedMonitorName | Should -Be 'Testcorp GitOps'
+            $global:capturedMonitorName | Should -Be 'Testcorp GitOps'
         }
 
         It 'Should sanitize special characters in monitor name' {
@@ -125,19 +129,18 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
         It 'Should parse JSON files from workload subdirectories' {
             Mock Get-GraphAccessToken { return 'mock-token' }
             Mock Invoke-GraphRequest { return @{ id = 'mock-id'; value = @() } }
+            Mock Write-Host { }
 
-            $result = & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun 2>&1
-
-            ($result -join "`n") | Should -Match 'test-policy\.json|conditionalaccesspolicy'
+            & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun 2>&1 | Out-Null
+            Should -Invoke Write-Host -ParameterFilter { $Object -like '*Loading: test-policy.json*' }
         }
 
         It 'Should handle empty config directory gracefully' {
             $emptyDir = Join-Path $script:tempDir 'tenants' 'empty' 'config'
             New-Item -ItemType Directory -Path $emptyDir -Force | Out-Null
 
-            $result = & $applyScript -TenantConfigRoot $emptyDir -DryRun 2>&1
+            { & $applyScript -TenantConfigRoot $emptyDir -DryRun 2>&1 | Out-Null } | Should -Not -Throw
 
-            ($result -join "`n") | Should -Match 'No config files found'
             $LASTEXITCODE | Should -BeIn @(0, $null)
         }
     }

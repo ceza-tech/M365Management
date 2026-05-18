@@ -290,7 +290,7 @@ foreach ($workload in $WorkloadTypes) {
     }
 
     $configFiles = Get-ChildItem -Path $workloadConfigDir -Include '*.yaml','*.yml','*.json' -Recurse
-    if ($configFiles.Count -eq 0) {
+    if (@($configFiles).Count -eq 0) {
         Write-Info "No config files in $workloadConfigDir. Skipping."
         continue
     }
@@ -300,7 +300,7 @@ foreach ($workload in $WorkloadTypes) {
         $config    = ConvertFrom-YamlFile -Path $file.FullName
         if ($null -eq $config.resources) {
             $resources = @($config)
-        } elseif ($config.resources.Count -eq 0) {
+        } elseif (@($config.resources).Count -eq 0) {
             Write-Info "  Skipping $($file.Name) — resources array is empty."
             continue
         } else {
