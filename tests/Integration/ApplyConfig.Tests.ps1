@@ -20,6 +20,8 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
         $script:tenantDir = Join-Path $script:tenantConfigRoot 'entra'
         New-Item -ItemType Directory -Path $script:tenantDir -Force | Out-Null
 
+        # JSON fixtures are used to validate the config-application pipeline independent of powershell-yaml,
+        # so this suite remains runnable in minimal environments where YAML module installation is unavailable.
         $config = @{
             resources = @(
                 @{
@@ -128,7 +130,7 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
     }
 
     Context 'Configuration parsing' {
-        It 'Should parse JSON files from workload subdirectories' {
+        It 'Should parse JSON config files from workload subdirectories' {
             Mock Get-GraphAccessToken { return 'mock-token' }
             Mock Invoke-GraphRequest { return @{ id = 'mock-id'; value = @() } }
             Mock Write-Host { }
@@ -140,10 +142,12 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
         It 'Should handle empty config directory gracefully' {
             $emptyDir = Join-Path $script:tempDir 'tenants' 'empty' 'config'
             New-Item -ItemType Directory -Path $emptyDir -Force | Out-Null
+            Mock Write-Host { }
 
             { & $applyScript -TenantConfigRoot $emptyDir -DryRun 2>&1 | Out-Null } | Should -Not -Throw
 
             $LASTEXITCODE | Should -BeIn @(0, $null)
+            Should -Invoke Write-Host -ParameterFilter { $Object -like 'No config files found*' }
         }
     }
 }

@@ -41,7 +41,7 @@ Describe 'Get-OidcToken' -Tag 'Unit', 'Auth' {
     }
 
     It 'Should return null when OIDC acquisition fails' {
-        $env:ACTIONS_ID_TOKEN_REQUEST_URL = 'https://token.actions.githubusercontent.com?foo=bar'
+        $env:ACTIONS_ID_TOKEN_REQUEST_URL = 'https://token.actions.githubusercontent.com/_apis/oidc/token'
         $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN = 'request-token'
         Mock Invoke-RestMethod { throw 'OIDC request failed' }
 
