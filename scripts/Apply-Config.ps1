@@ -225,13 +225,13 @@ if ($MonitorDisplayName -match '[^a-zA-Z0-9 ]') {
 }
 
 # --- Discover workloads ---
-if ($WorkloadTypes.Count -eq 0) {
+if (@($WorkloadTypes).Count -eq 0) {
     if (Test-Path $TenantConfigRoot) {
-        $WorkloadTypes = Get-ChildItem -Path $TenantConfigRoot -Directory | Select-Object -ExpandProperty Name
+        $WorkloadTypes = @(Get-ChildItem -Path $TenantConfigRoot -Directory | Select-Object -ExpandProperty Name)
     }
 }
 
-if ($WorkloadTypes.Count -eq 0) {
+if (@($WorkloadTypes).Count -eq 0) {
     Write-Host "No config files found in $TenantConfigRoot. Add YAML files first." -ForegroundColor Yellow
     exit 0
 }

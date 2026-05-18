@@ -8,31 +8,30 @@
 BeforeAll {
     $repoRoot = Join-Path $PSScriptRoot '..' '..'
     $applyScript = Join-Path $repoRoot 'scripts' 'Apply-Config.ps1'
-    $authHelper = Join-Path $repoRoot 'scripts' 'helpers' 'Auth.ps1'
-
-    # Source the auth helper to mock its functions
-    . $authHelper
 }
 
 Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
 
     BeforeAll {
-        # Create temp tenant structure for tests
         $script:tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "M365Test_$(Get-Random)"
-        $script:tenantDir = Join-Path $script:tempDir 'tenants' 'testcorp' 'config' 'entra'
+        $script:tenantConfigRoot = Join-Path $script:tempDir 'tenants' 'testcorp' 'config'
+        $script:tenantDir = Join-Path $script:tenantConfigRoot 'entra'
         New-Item -ItemType Directory -Path $script:tenantDir -Force | Out-Null
 
-        # Create a valid config file
-        $validConfig = @'
-resources:
-  - resourceType: microsoft.entra.conditionalaccesspolicy
-    properties:
-      Id: "12345678-1234-1234-1234-123456789012"
-      DisplayName: "Test MFA Policy"
-      State: enabled
-      Ensure: Present
-'@
-        $validConfig | Set-Content (Join-Path $script:tenantDir 'test-policy.yaml')
+        $config = @{
+            resources = @(
+                @{
+                    resourceType = 'microsoft.entra.conditionalaccesspolicy'
+                    properties   = @{
+                        Id          = '12345678-1234-1234-1234-123456789012'
+                        DisplayName = 'Test MFA Policy'
+                        State       = 'enabled'
+                        Ensure      = 'Present'
+                    }
+                }
+            )
+        }
+        $config | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $script:tenantDir 'test-policy.json')
     }
 
     AfterAll {
@@ -42,80 +41,48 @@ resources:
     }
 
     Context 'DryRun mode' {
-
         BeforeEach {
-            # Mock auth to prevent actual API calls
-            Mock Get-GraphAccessToken { return 'mock-token' } -ModuleName Auth
-        }
-
-        It 'Should not make API calls in DryRun mode' {
-            # Arrange
+            Mock Get-GraphAccessToken { return 'mock-token' }
             Mock Invoke-GraphRequest {
                 throw "API should not be called in DryRun mode"
             }
-
-            if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
-                Set-ItResult -Skipped -Because 'powershell-yaml module not installed'
-                return
-            }
-
-            # Act - DryRun should not throw even without mocking API
-            $result = & $applyScript -TenantConfigRoot (Join-Path $script:tempDir 'tenants' 'testcorp' 'config') -DryRun 2>&1
-
-            # Assert - should complete without calling API
-            Should -Invoke Invoke-GraphRequest -Times 0
         }
 
-        It 'Should output planned changes in DryRun mode' {
-            # Arrange
-            Mock Invoke-GraphRequest { }
+        It 'Should not make API calls in DryRun mode' {
+            $result = & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun 2>&1
 
-            if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
-                Set-ItResult -Skipped -Because 'powershell-yaml module not installed'
-                return
-            }
-
-            # Act
-            $result = & $applyScript -TenantConfigRoot (Join-Path $script:tempDir 'tenants' 'testcorp' 'config') -DryRun 2>&1
-
-            # Assert
+            Should -Invoke Get-GraphAccessToken -Times 1
+            Should -Invoke Invoke-GraphRequest -Times 0
             ($result -join "`n") | Should -Match 'DRY-RUN'
+        }
+
+        It 'Should list planned resources in DryRun mode' {
+            $result = & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun 2>&1
+            ($result -join "`n") | Should -Match 'conditionalaccesspolicy'
         }
     }
 
     Context 'Monitor naming conventions' {
-
         It 'Should generate monitor name from tenant name' {
-            # Tenant: testcorp → Monitor: "Testcorp GitOps"
-            # This tests the naming logic without making API calls
-
-            if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
-                Set-ItResult -Skipped -Because 'powershell-yaml module not installed'
-                return
-            }
-
             Mock Get-GraphAccessToken { return 'mock-token' }
             Mock Invoke-GraphRequest {
-                param($Endpoint, $Body)
-                if ($Body -and $Body.displayName) {
-                    # Capture the display name for assertion
-                    $script:capturedMonitorName = $Body.displayName
+                param($Method, $Endpoint, $Body)
+                if ($Method -eq 'GET' -and $Endpoint -eq '/admin/configurationManagement/configurationMonitors') {
+                    return @{ value = @() }
                 }
-                return @{ id = 'mock-monitor-id'; value = @() }
+                if ($Method -eq 'POST') {
+                    $script:capturedMonitorName = $Body.displayName
+                    return @{ id = 'mock-monitor-id' }
+                }
+                return @{ value = @() }
             }
 
-            # Act
-            & $applyScript -TenantName 'testcorp' -TenantConfigRoot (Join-Path $script:tempDir 'tenants' 'testcorp' 'config') 2>&1 | Out-Null
+            & $applyScript -TenantName 'testcorp' -TenantConfigRoot $script:tenantConfigRoot -ValidateSchema:$false -AutoSnapshot:$false 2>&1 | Out-Null
 
-            # Assert
-            $script:capturedMonitorName | Should -Match '^Testcorp'
+            $script:capturedMonitorName | Should -Be 'Testcorp GitOps'
         }
 
         It 'Should sanitize special characters in monitor name' {
-            # Tenant with special chars should be sanitized
-            # "test-corp_123" → "Test corp 123 GitOps"
-
-            # This is a logic test - we verify the naming sanitization
             $tenantName = 'test-corp_123'
             $safeName = ($tenantName -replace '[^a-zA-Z0-9 ]', ' ').Trim()
             $safeName = $safeName.Substring(0,1).ToUpper() + $safeName.Substring(1)
@@ -127,79 +94,50 @@ resources:
     }
 
     Context 'Error handling' {
-
         It 'Should throw on authentication failure' {
-            # Arrange
             Mock Get-GraphAccessToken {
                 throw "Authentication failed: Invalid credentials"
             }
 
-            if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
-                Set-ItResult -Skipped -Because 'powershell-yaml module not installed'
-                return
-            }
-
-            # Act & Assert
-            { & $applyScript -TenantConfigRoot (Join-Path $script:tempDir 'tenants' 'testcorp' 'config') } |
+            { & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun } |
                 Should -Throw '*Authentication*'
         }
 
-        It 'Should handle Graph API 429 (throttling) gracefully' {
-            # Arrange
+        It 'Should throw when monitor create API call fails' {
             Mock Get-GraphAccessToken { return 'mock-token' }
-
-            $script:callCount = 0
             Mock Invoke-GraphRequest {
-                $script:callCount++
-                if ($script:callCount -le 2) {
-                    $exception = [System.Net.WebException]::new("Too Many Requests")
-                    $errorRecord = [System.Management.Automation.ErrorRecord]::new(
-                        $exception,
-                        "TooManyRequests",
-                        [System.Management.Automation.ErrorCategory]::LimitsExceeded,
-                        $null
-                    )
-                    throw $errorRecord
+                param($Method, $Endpoint)
+                if ($Method -eq 'GET' -and $Endpoint -eq '/admin/configurationManagement/configurationMonitors') {
+                    return @{ value = @() }
                 }
-                return @{ id = 'mock-id'; value = @() }
+                if ($Method -eq 'POST') {
+                    throw "Graph API unavailable"
+                }
+                return @{ value = @() }
             }
 
-            # Note: This test documents expected behavior for retry logic
-            # Actual retry implementation may vary
-            Set-ItResult -Skipped -Because 'Retry logic not yet implemented'
+            { & $applyScript -TenantName 'testcorp' -TenantConfigRoot $script:tenantConfigRoot -ValidateSchema:$false -AutoSnapshot:$false } |
+                Should -Throw '*Graph API unavailable*'
         }
     }
 
     Context 'Configuration parsing' {
-
-        It 'Should parse YAML files from workload subdirectories' {
-            # Arrange
+        It 'Should parse JSON files from workload subdirectories' {
             Mock Get-GraphAccessToken { return 'mock-token' }
             Mock Invoke-GraphRequest { return @{ id = 'mock-id'; value = @() } }
 
-            if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
-                Set-ItResult -Skipped -Because 'powershell-yaml module not installed'
-                return
-            }
+            $result = & $applyScript -TenantConfigRoot $script:tenantConfigRoot -DryRun 2>&1
 
-            # Act
-            $result = & $applyScript -TenantConfigRoot (Join-Path $script:tempDir 'tenants' 'testcorp' 'config') -DryRun 2>&1
-
-            # Assert - should find and process the test YAML file
-            ($result -join "`n") | Should -Match 'test-policy\.yaml|conditionalaccesspolicy'
+            ($result -join "`n") | Should -Match 'test-policy\.json|conditionalaccesspolicy'
         }
 
         It 'Should handle empty config directory gracefully' {
-            # Arrange
             $emptyDir = Join-Path $script:tempDir 'tenants' 'empty' 'config'
             New-Item -ItemType Directory -Path $emptyDir -Force | Out-Null
 
-            Mock Get-GraphAccessToken { return 'mock-token' }
-
-            # Act
             $result = & $applyScript -TenantConfigRoot $emptyDir -DryRun 2>&1
 
-            # Assert - should not throw, but may warn
+            ($result -join "`n") | Should -Match 'No config files found'
             $LASTEXITCODE | Should -BeIn @(0, $null)
         }
     }
