@@ -67,7 +67,6 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
 
     Context 'Monitor naming conventions' {
         It 'Should generate monitor name from tenant name' {
-            $global:capturedMonitorName = $null
             Mock Get-GraphAccessToken { return 'mock-token' }
             Mock Invoke-GraphRequest {
                 param($Method, $Endpoint, $Body)
@@ -75,7 +74,6 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
                     return @{ value = @() }
                 }
                 if ($Method -eq 'POST') {
-                    $global:capturedMonitorName = $Body.displayName
                     return @{ id = 'mock-monitor-id' }
                 }
                 return @{ value = @() }
@@ -83,7 +81,11 @@ Describe 'Apply-Config.ps1' -Tag 'Integration', 'ApplyConfig' {
 
             & $applyScript -TenantName 'testcorp' -TenantConfigRoot $script:tenantConfigRoot -ValidateSchema:$false -AutoSnapshot:$false 2>&1 | Out-Null
 
-            $global:capturedMonitorName | Should -Be 'Testcorp GitOps'
+            Should -Invoke Invoke-GraphRequest -Times 1 -ParameterFilter {
+                $Method -eq 'POST' -and
+                $Endpoint -eq '/admin/configurationManagement/configurationMonitors' -and
+                $Body.displayName -eq 'Testcorp GitOps'
+            }
         }
 
         It 'Should sanitize special characters in monitor name' {

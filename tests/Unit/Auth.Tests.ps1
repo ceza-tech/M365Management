@@ -22,7 +22,7 @@ Describe 'Get-OidcToken' -Tag 'Unit', 'Auth' {
     }
 
     It 'Should acquire and exchange OIDC token successfully' {
-        $env:ACTIONS_ID_TOKEN_REQUEST_URL = 'https://token.actions.githubusercontent.com?foo=bar'
+        $env:ACTIONS_ID_TOKEN_REQUEST_URL = 'https://token.actions.githubusercontent.com/_apis/oidc/token'
         $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN = 'request-token'
 
         Mock Invoke-RestMethod {
@@ -36,7 +36,7 @@ Describe 'Get-OidcToken' -Tag 'Unit', 'Auth' {
         $token = Get-OidcToken -TenantId 'tenant-id' -ClientId 'client-id'
 
         $token | Should -Be 'azure-access-token'
-        Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter { $Method -eq 'Get' -and $Uri -match 'audience=' }
+        Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter { $Method -eq 'Get' -and $Uri -match 'audience=api://AzureADTokenExchange' }
         Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter { $Method -eq 'Post' -and $Body.client_assertion -eq 'github-oidc-token' }
     }
 
