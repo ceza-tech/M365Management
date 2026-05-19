@@ -225,13 +225,13 @@ if ($MonitorDisplayName -match '[^a-zA-Z0-9 ]') {
 }
 
 # --- Discover workloads ---
-if ($WorkloadTypes.Count -eq 0) {
+if (@($WorkloadTypes).Count -eq 0) {
     if (Test-Path $TenantConfigRoot) {
-        $WorkloadTypes = Get-ChildItem -Path $TenantConfigRoot -Directory | Select-Object -ExpandProperty Name
+        $WorkloadTypes = @(Get-ChildItem -Path $TenantConfigRoot -Directory | Select-Object -ExpandProperty Name)
     }
 }
 
-if ($WorkloadTypes.Count -eq 0) {
+if (@($WorkloadTypes).Count -eq 0) {
     Write-Host "No config files found in $TenantConfigRoot. Add YAML files first." -ForegroundColor Yellow
     exit 0
 }
@@ -290,7 +290,7 @@ foreach ($workload in $WorkloadTypes) {
     }
 
     $configFiles = Get-ChildItem -Path $workloadConfigDir -Include '*.yaml','*.yml','*.json' -Recurse
-    if ($configFiles.Count -eq 0) {
+    if (@($configFiles).Count -eq 0) {
         Write-Info "No config files in $workloadConfigDir. Skipping."
         continue
     }
@@ -300,7 +300,7 @@ foreach ($workload in $WorkloadTypes) {
         $config    = ConvertFrom-YamlFile -Path $file.FullName
         if ($null -eq $config.resources) {
             $resources = @($config)
-        } elseif ($config.resources.Count -eq 0) {
+        } elseif (@($config.resources).Count -eq 0) {
             Write-Info "  Skipping $($file.Name) — resources array is empty."
             continue
         } else {

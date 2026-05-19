@@ -10,6 +10,47 @@ BeforeAll {
     . $scriptPath
 }
 
+Describe 'Get-OidcToken' -Tag 'Unit', 'Auth' {
+    BeforeEach {
+        $env:ACTIONS_ID_TOKEN_REQUEST_URL = $null
+        $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN = $null
+    }
+
+    It 'Should return null when OIDC environment is not available' {
+        $token = Get-OidcToken -TenantId 'tenant-id' -ClientId 'client-id'
+        $token | Should -BeNullOrEmpty
+    }
+
+    It 'Should acquire and exchange OIDC token successfully' {
+        $env:ACTIONS_ID_TOKEN_REQUEST_URL = 'https://token.actions.githubusercontent.com/_apis/oidc/token'
+        $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN = 'request-token'
+
+        Mock Invoke-RestMethod {
+            param($Method)
+            if ($Method -eq 'Get') {
+                return @{ value = 'github-oidc-token' }
+            }
+            return @{ access_token = 'azure-access-token' }
+        }
+
+        $token = Get-OidcToken -TenantId 'tenant-id' -ClientId 'client-id'
+
+        $token | Should -Be 'azure-access-token'
+        Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter { $Method -eq 'Get' -and $Uri -match 'audience=api://AzureADTokenExchange' }
+        Should -Invoke Invoke-RestMethod -Times 1 -ParameterFilter { $Method -eq 'Post' -and $Body.client_assertion -eq 'github-oidc-token' }
+    }
+
+    It 'Should return null when OIDC acquisition fails' {
+        $env:ACTIONS_ID_TOKEN_REQUEST_URL = 'https://token.actions.githubusercontent.com/_apis/oidc/token'
+        $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN = 'request-token'
+        Mock Invoke-RestMethod { throw 'OIDC request failed' }
+
+        $token = Get-OidcToken -TenantId 'tenant-id' -ClientId 'client-id'
+
+        $token | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Get-GraphAccessToken' -Tag 'Unit', 'Auth' {
 
     BeforeEach {
@@ -17,6 +58,9 @@ Describe 'Get-GraphAccessToken' -Tag 'Unit', 'Auth' {
         $env:AZURE_TENANT_ID = $null
         $env:AZURE_CLIENT_ID = $null
         $env:AZURE_CLIENT_SECRET = $null
+        $env:USE_OIDC = $null
+        $env:ACTIONS_ID_TOKEN_REQUEST_URL = $null
+        $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN = $null
     }
 
     Context 'When credentials are provided via parameters' {
@@ -113,6 +157,18 @@ Describe 'Get-GraphAccessToken' -Tag 'Unit', 'Auth' {
             # Act & Assert
             { Get-GraphAccessToken } | Should -Throw '*Missing credentials*'
         }
+
+        It 'Should throw when client secret is missing and OIDC is disabled' {
+            # Arrange
+            $env:AZURE_TENANT_ID = 'tenant-id'
+            $env:AZURE_CLIENT_ID = 'client-id'
+            $env:AZURE_CLIENT_SECRET = $null
+            $env:USE_OIDC = 'false'
+            Mock Test-Path { return $false } -ParameterFilter { $Path -like '*.env' }
+
+            # Act & Assert
+            { Get-GraphAccessToken } | Should -Throw '*Missing AZURE_CLIENT_SECRET*'
+        }
     }
 
     Context 'When .env file exists' {
@@ -150,6 +206,28 @@ AZURE_CLIENT_SECRET=file-client-secret
 
             # Act & Assert (should not throw)
             { Get-GraphAccessToken } | Should -Not -Throw
+        }
+    }
+
+    Context 'When OIDC is enabled' {
+        It 'Should return OIDC token without client secret' {
+            Mock Get-OidcToken { return 'oidc-token-value' }
+
+            $token = Get-GraphAccessToken -TenantId 'tenant-id' -ClientId 'client-id' -ClientSecret '' -UseOidc $true
+
+            $token | Should -Be 'oidc-token-value'
+            Should -Invoke Get-OidcToken -Times 1
+        }
+
+        It 'Should fall back to client secret when OIDC returns null' {
+            Mock Get-OidcToken { return $null }
+            Mock Invoke-RestMethod { return @{ access_token = 'fallback-token' } }
+
+            $token = Get-GraphAccessToken -TenantId 'tenant-id' -ClientId 'client-id' -ClientSecret 'secret' -UseOidc $true
+
+            $token | Should -Be 'fallback-token'
+            Should -Invoke Get-OidcToken -Times 1
+            Should -Invoke Invoke-RestMethod -Times 1
         }
     }
 }
@@ -257,6 +335,29 @@ Describe 'Invoke-GraphRequest' -Tag 'Unit', 'Auth' {
 
             # Assert
             Should -Invoke Get-GraphAccessToken -Times 1
+        }
+    }
+
+    Context 'When Graph API returns an error' {
+        It 'Should throw a formatted Graph API error message' {
+            $exception = [System.Exception]::new('request failed')
+            Add-Member -InputObject $exception -MemberType NoteProperty -Name Response -Value ([PSCustomObject]@{
+                StatusCode = [PSCustomObject]@{ value__ = 429 }
+            }) -Force
+
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $exception,
+                'GraphError',
+                [System.Management.Automation.ErrorCategory]::InvalidOperation,
+                $null
+            )
+            $errorRecord.ErrorDetails = [System.Management.Automation.ErrorDetails]::new('Too Many Requests')
+
+            Mock Invoke-RestMethod { throw $errorRecord }
+
+            {
+                Invoke-GraphRequest -Endpoint '/test' -Token 'token'
+            } | Should -Throw '*Graph API error*429*Too Many Requests*'
         }
     }
 }
