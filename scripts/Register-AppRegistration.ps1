@@ -147,8 +147,35 @@ $secretResult = Add-MgApplicationPassword -ApplicationId $objectId -BodyParamete
 $clientSecret = $secretResult.SecretText
 
 Write-Success "Client secret created. Expires: $secretExpiry"
-Write-Host "`n  ⚠️  SAVE THIS NOW — it will not be shown again:" -ForegroundColor Yellow
-Write-Host "  AZURE_CLIENT_SECRET = $clientSecret" -ForegroundColor Magenta
+Write-Host ""
+Write-Host "  ⚠️  SAVE THIS NOW — it will not be shown again." -ForegroundColor Yellow
+Write-Host "  The secret value has been written to: secret-output.txt" -ForegroundColor Yellow
+Write-Host "  Delete that file immediately after saving the secret to GitHub." -ForegroundColor Yellow
+
+# Write the secret to a local file rather than printing to stdout/terminal history.
+# This avoids the value being captured in shell history, CI logs, or screen recordings.
+$secretOutput = @"
+# M365Management App Registration — Secret Output
+# Generated: $(Get-Date -Format 'o')
+# DELETE THIS FILE after storing the values in GitHub Actions secrets.
+#
+# Repo → Settings → Secrets and variables → Actions → New repository secret
+
+AZURE_TENANT_ID     = $tenantId
+AZURE_CLIENT_ID     = $clientId
+AZURE_CLIENT_SECRET = $clientSecret
+
+Secret expires: $secretExpiry
+Set a calendar reminder to rotate the secret before expiry.
+"@
+
+$secretFile = Join-Path $PSScriptRoot 'secret-output.txt'
+Set-Content -Path $secretFile -Value $secretOutput -Encoding utf8
+
+# Restrict file permissions (Unix/macOS only; no-op on Windows)
+if ($IsLinux -or $IsMacOS) {
+    chmod 600 $secretFile 2>$null
+}
 
 # ---------------------------------------------------------------------------
 # Step 3 — Grant Microsoft Graph application permissions
@@ -210,12 +237,14 @@ foreach ($perm in $requiredPermissions) {
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host "🎉 App Registration setup complete!" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Add these as GitHub Actions secrets" -ForegroundColor White
-Write-Host "  (Repo → Settings → Secrets and variables → Actions):" -ForegroundColor DarkGray
+Write-Host "  Credentials saved to: $secretFile" -ForegroundColor Cyan
+Write-Host "  Open that file, copy all three values into GitHub Actions secrets," -ForegroundColor White
+Write-Host "  then DELETE the file immediately." -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  AZURE_TENANT_ID     = $tenantId"     -ForegroundColor Cyan
-Write-Host "  AZURE_CLIENT_ID     = $clientId"     -ForegroundColor Cyan
-Write-Host "  AZURE_CLIENT_SECRET = $clientSecret" -ForegroundColor Magenta
+Write-Host "  GitHub: Repo → Settings → Secrets and variables → Actions" -ForegroundColor DarkGray
+Write-Host "    AZURE_TENANT_ID      (tenant ID printed above)" -ForegroundColor DarkGray
+Write-Host "    AZURE_CLIENT_ID      (client ID printed above)" -ForegroundColor DarkGray
+Write-Host "    AZURE_CLIENT_SECRET  (from secret-output.txt)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  Secret expires: $secretExpiry" -ForegroundColor DarkGray
 Write-Host "  ⚠️  Set a calendar reminder to rotate the secret before expiry!" -ForegroundColor Yellow

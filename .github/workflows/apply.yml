@@ -30,7 +30,7 @@ jobs:
     outputs:
       tenants: ${{ steps.list.outputs.tenants }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0   # Full history needed for git diff on push events
 
@@ -77,7 +77,21 @@ jobs:
       fail-fast: false                  # apply other tenants even if one fails
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Validate tenant name
+        shell: pwsh
+        run: |
+          $tenant = '${{ matrix.tenant }}'
+          if ($tenant -notmatch '^[a-zA-Z0-9_-]+$') {
+            Write-Error "Invalid tenant name '$tenant'. Only alphanumeric characters, hyphens, and underscores are allowed."
+            exit 1
+          }
+          $validTenants = Get-ChildItem tenants -Directory | Select-Object -ExpandProperty Name
+          if ($tenant -notin $validTenants) {
+            Write-Error "Tenant '$tenant' is not a known tenant folder under tenants/. Valid tenants: $($validTenants -join ', ')"
+            exit 1
+          }
 
       - name: Install required PowerShell modules
         shell: pwsh
@@ -92,7 +106,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          USE_OIDC: 'false'
+          USE_OIDC: 'true'
         run: |
           ./scripts/Apply-Config.ps1 -TenantName '${{ matrix.tenant }}' -DryRun
           Write-Host "::notice::Dry-run complete for tenant '${{ matrix.tenant }}'. No changes applied."
@@ -104,7 +118,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          USE_OIDC: 'false'
+          USE_OIDC: 'true'
         run: |
           ./scripts/Apply-Config.ps1 -TenantName '${{ matrix.tenant }}'
           Write-Host "::notice::Configuration applied for tenant '${{ matrix.tenant }}'."
@@ -116,7 +130,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          USE_OIDC: 'false'
+          USE_OIDC: 'true'
         run: |
           Start-Sleep -Seconds 30
           ./scripts/Get-Drifts.ps1 -TenantName '${{ matrix.tenant }}'

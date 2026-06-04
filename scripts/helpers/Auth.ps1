@@ -69,10 +69,19 @@ function Get-GraphAccessToken {
     if (-not $TenantId -or -not $ClientId) {
         $envFile = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) '.env'
         if (Test-Path $envFile) {
+            # Only accept well-formed KEY=VALUE lines for known credential keys.
+            # This prevents arbitrary environment variable injection if the .env
+            # file is ever modified by untrusted input.
+            $allowedKeys = @('AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'USE_OIDC')
             Get-Content $envFile | Where-Object { $_ -match '^\s*[^#]' } | ForEach-Object {
                 $parts = $_ -split '=', 2
                 if ($parts.Count -eq 2) {
-                    [System.Environment]::SetEnvironmentVariable($parts[0].Trim(), $parts[1].Trim())
+                    $key   = $parts[0].Trim()
+                    $value = $parts[1].Trim()
+                    # Validate key is alphanumeric+underscore and in the allowed list
+                    if ($key -match '^[A-Z_][A-Z0-9_]*$' -and $key -in $allowedKeys) {
+                        [System.Environment]::SetEnvironmentVariable($key, $value)
+                    }
                 }
             }
             $TenantId     = $env:AZURE_TENANT_ID
@@ -127,6 +136,11 @@ function Invoke-GraphRequest {
         [object]$Body     = $null,
         [string]$Token    = $null,
         [string]$ApiBase  = 'https://graph.microsoft.com/beta'
+    # NOTE: The UTCM configuration management endpoints
+    # (/admin/configurationManagement/...) are only available in the beta API
+    # version and have not yet been promoted to v1.0. Update this default to
+    # 'https://graph.microsoft.com/v1.0' once the endpoints are generally
+    # available, and validate that all callers still work.
     )
 
     if (-not $Token) {

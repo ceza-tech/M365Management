@@ -2,6 +2,9 @@
 .env
 *.env.local
 
+# Secret output from Register-AppRegistration.ps1 - DELETE after use
+secret-output.txt
+
 # PowerShell artifacts
 *.ps1xml
 *.psd1.bak
