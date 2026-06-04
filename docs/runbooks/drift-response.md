@@ -94,7 +94,7 @@ For complex or unclear situations:
 | L2 | Security team (`@security-team`) | P1/P2 security-related drifts (MFA, CA policies, auth methods) | Engaged within 30 min of L1 escalation |
 | L3 | Platform team lead | Repeated drifts (≥3 in 24 hrs on same resource), automation conflicts, or failed rollback | Engaged within 1 hr of L2 escalation |
 
-**Break-glass access:** If GitHub Actions cannot authenticate (expired secret, OIDC misconfigured), the designated break-glass admin must apply configuration manually via the Entra portal using the snapshot JSON as reference. Break-glass admin: _[replace with name/alias]_ — access controlled via the `M365Management-BreakGlass` Entra role assignment.
+**Break-glass access:** If GitHub Actions cannot authenticate (expired secret, OIDC misconfigured), the designated break-glass admin must apply configuration manually via the Entra portal using the snapshot JSON as reference. Break-glass admin: **`<PLACEHOLDER: fill in admin name/alias before using this runbook>`** — access controlled via the `M365Management-BreakGlass` Entra role assignment.
 
 > **After-hours P1/P2:** Page the on-call engineer directly via PagerDuty. Do not wait for the next business day. The drift-check workflow creates a GitHub Issue automatically — also send a manual Teams message to `#m365-incidents` if the alert is P1.
 

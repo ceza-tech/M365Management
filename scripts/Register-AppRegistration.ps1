@@ -174,7 +174,10 @@ Set-Content -Path $secretFile -Value $secretOutput -Encoding utf8
 
 # Restrict file permissions (Unix/macOS only; no-op on Windows)
 if ($IsLinux -or $IsMacOS) {
-    chmod 600 $secretFile 2>$null
+    $chmodResult = chmod 600 $secretFile 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "Could not restrict permissions on $secretFile (chmod exited $LASTEXITCODE: $chmodResult). Ensure the file is not readable by other users."
+    }
 }
 
 # ---------------------------------------------------------------------------
