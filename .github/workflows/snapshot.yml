@@ -24,16 +24,19 @@ on:
         type: boolean
 
 permissions:
-  contents: write
+  contents: read   # Reduced from write; see snapshot job for the write scope
 
 jobs:
+  # Determine which tenants to run against
   discover-tenants:
     name: Discover Tenants
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       tenants: ${{ steps.list.outputs.tenants }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: List tenants
         id: list
         shell: pwsh
@@ -51,13 +54,30 @@ jobs:
     needs: discover-tenants
     runs-on: ubuntu-latest
     environment: ${{ matrix.tenant }}
+    permissions:
+      contents: write    # Only this job writes to the repo (optional commit step)
+      id-token: write    # Required for OIDC / Workload Identity Federation
     strategy:
       matrix:
         tenant: ${{ fromJson(needs.discover-tenants.outputs.tenants) }}
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Validate tenant name
+        shell: pwsh
+        run: |
+          $tenant = '${{ matrix.tenant }}'
+          if ($tenant -notmatch '^[a-zA-Z0-9_-]+$') {
+            Write-Error "Invalid tenant name '$tenant'. Only alphanumeric characters, hyphens, and underscores are allowed."
+            exit 1
+          }
+          $validTenants = Get-ChildItem tenants -Directory | Select-Object -ExpandProperty Name
+          if ($tenant -notin $validTenants) {
+            Write-Error "Tenant '$tenant' is not a known tenant folder under tenants/. Valid tenants: $($validTenants -join ', ')"
+            exit 1
+          }
 
       - name: Take snapshot
         shell: pwsh
@@ -65,6 +85,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          USE_OIDC: 'true'
         run: |
           $resources = '${{ github.event.inputs.resources }}' -split ',' |
             ForEach-Object { $_.Trim() } | Where-Object { $_ }
@@ -83,7 +104,7 @@ jobs:
           ./scripts/Take-Snapshot.ps1 -Resources $resources -DisplayName $displayName -OutputDir $outDir
 
       - name: Upload snapshot as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: snapshot-${{ matrix.tenant }}-${{ github.run_number }}
           path: tenants/${{ matrix.tenant }}/snapshots/

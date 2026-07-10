@@ -2,8 +2,15 @@
 
 ## Overview
 
-This project uses **Client Credentials** (service principal) flow to authenticate to Microsoft Graph.
-This is the recommended approach for non-interactive/CI environments like GitHub Actions.
+This project uses a **service principal** (App Registration) to authenticate to Microsoft Graph.
+Two authentication methods are supported:
+
+| Method | Recommended for | Notes |
+|--------|----------------|-------|
+| **OIDC / Workload Identity Federation** | GitHub Actions (CI/CD) | ✅ **Recommended** — no long-lived secrets, no rotation |
+| **Client credentials (client secret)** | Local development, non-GitHub CI | Requires secret rotation; store in GitHub Secrets |
+
+> **Security note:** OIDC is the preferred method for all GitHub Actions workflows. Client secrets should only be used as a fallback when OIDC is not yet configured. All workflows in this repo default to `USE_OIDC: 'true'` and will fall back to a client secret if one is present.
 
 ## Step 1: Create an App Registration in Entra
 
@@ -53,15 +60,26 @@ In your GitHub repo → **Settings** → **Secrets and variables** → **Actions
 | `AZURE_CLIENT_ID` | App Registration client ID (GUID) |
 | `AZURE_CLIENT_SECRET` | Client secret value from Step 2 |
 
-## Optional: Use OIDC (Workload Identity Federation)
+## Optional: Use OIDC (Workload Identity Federation) — Recommended
 
-Instead of a long-lived client secret, you can use [Workload Identity Federation](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-azure) for keyless auth from GitHub Actions. This is more secure and eliminates secret rotation.
+Instead of a long-lived client secret, use [Workload Identity Federation](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-azure) for keyless auth from GitHub Actions. This is the **recommended** approach — it eliminates secret rotation and reduces credential exposure risk.
+
+### Setup
+
+1. In your Entra App Registration → **Certificates & secrets** → **Federated credentials** → **Add credential**
+2. Select scenario: **GitHub Actions deploying Azure resources**
+3. Fill in:
+   - **Organization**: your GitHub org/user
+   - **Repository**: `M365Management`
+   - **Entity**: `Environment` → select the GitHub Environment name (e.g., `kustomize`)
+4. Remove `AZURE_CLIENT_SECRET` from your GitHub Environment secrets (it is no longer needed)
+5. Keep `AZURE_TENANT_ID` and `AZURE_CLIENT_ID` as secrets
+
+The workflows already have `id-token: write` and `USE_OIDC: 'true'` set. No workflow changes are required.
 
 ```yaml
-# In your workflow:
-- uses: azure/login@v2
-  with:
-    client-id: ${{ secrets.AZURE_CLIENT_ID }}
-    tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+# The workflows already include this — shown here for reference only:
+permissions:
+  id-token: write   # Enables OIDC token request
+  contents: read
 ```

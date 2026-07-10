@@ -88,11 +88,36 @@ For complex or unclear situations:
 
 ## Escalation Path
 
-| Level | Contact | When |
-|-------|---------|------|
-| L1 | On-call engineer | Initial response |
-| L2 | Security team | P1/P2 security-related drifts |
-| L3 | Platform team lead | Repeated drifts, automation conflicts |
+| Level | Contact | When | SLA |
+|-------|---------|------|-----|
+| L1 | On-call engineer (`@oncall-m365` team or PagerDuty rotation) | Initial response to any drift alert | Acknowledge within 15 min (P1), 30 min (P2), 2 hrs (P3/P4) |
+| L2 | Security team (`@security-team`) | P1/P2 security-related drifts (MFA, CA policies, auth methods) | Engaged within 30 min of L1 escalation |
+| L3 | Platform team lead | Repeated drifts (≥3 in 24 hrs on same resource), automation conflicts, or failed rollback | Engaged within 1 hr of L2 escalation |
+
+**Break-glass access:** If GitHub Actions cannot authenticate (expired secret, OIDC misconfigured), the designated break-glass admin must apply configuration manually via the Entra portal using the snapshot JSON as reference. Break-glass admin: **`<PLACEHOLDER: fill in admin name/alias before using this runbook>`** — access controlled via the `M365Management-BreakGlass` Entra role assignment.
+
+> **After-hours P1/P2:** Page the on-call engineer directly via PagerDuty. Do not wait for the next business day. The drift-check workflow creates a GitHub Issue automatically — also send a manual Teams message to `#m365-incidents` if the alert is P1.
+
+### Notification Channels
+
+- **GitHub Issues** — automatic (created by drift detection workflow for all drift events)
+- **Teams / Slack** — configure a webhook secret `TEAMS_WEBHOOK_URL` (or `SLACK_WEBHOOK_URL`) in your GitHub Environment secrets and add the optional notification step below to your drift-check workflow. For P1/P2 drifts, do not rely solely on GitHub Issues.
+
+```yaml
+# Optional: add this step after the "Warn on drift" step in drift-check.yml
+# Requires TEAMS_WEBHOOK_URL secret in the GitHub Environment
+- name: Notify Teams on P1/P2 drift
+  if: steps.check.outputs.drift_count != '0'
+  shell: pwsh
+  env:
+    TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+  run: |
+    if (-not $env:TEAMS_WEBHOOK_URL) { exit 0 }
+    $payload = @{
+      text = "⚠️ **Configuration drift detected** in tenant **${{ matrix.tenant }}**: ${{ steps.check.outputs.drift_count }} drift(s). [View details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+    } | ConvertTo-Json
+    Invoke-RestMethod -Method Post -Uri $env:TEAMS_WEBHOOK_URL -Body $payload -ContentType 'application/json'
+```
 
 ## Prevention Checklist
 
