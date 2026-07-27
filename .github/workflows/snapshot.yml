@@ -40,8 +40,10 @@ jobs:
       - name: List tenants
         id: list
         shell: pwsh
+        env:
+          TENANT_INPUT: ${{ github.event.inputs.tenant }}
         run: |
-          $requested = '${{ github.event.inputs.tenant }}'
+          $requested = $env:TENANT_INPUT
           $tenants   = if ($requested) { @($requested) } else {
             Get-ChildItem tenants -Directory | Select-Object -ExpandProperty Name
           }
@@ -86,8 +88,10 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           USE_OIDC: 'true'
+          RESOURCES_INPUT: ${{ github.event.inputs.resources }}
+          DISPLAY_NAME_INPUT: ${{ github.event.inputs.display_name }}
         run: |
-          $resources = '${{ github.event.inputs.resources }}' -split ',' |
+          $resources = $env:RESOURCES_INPUT -split ',' |
             ForEach-Object { $_.Trim() } | Where-Object { $_ }
           if (-not $resources) {
             $resources = @(
@@ -97,7 +101,7 @@ jobs:
               'microsoft.entra.securitydefaults'
             )
           }
-          $displayName = '${{ github.event.inputs.display_name }}'
+          $displayName = $env:DISPLAY_NAME_INPUT
           if (-not $displayName) { $displayName = 'Scheduled Snapshot' }
           $outDir = "tenants/${{ matrix.tenant }}/snapshots"
           New-Item -ItemType Directory -Force -Path $outDir | Out-Null

@@ -31,8 +31,10 @@ jobs:
       - name: List tenants
         id: list
         shell: pwsh
+        env:
+          REQUESTED_TENANT: ${{ github.event.inputs.tenant }}
         run: |
-          $requested = '${{ github.event.inputs.tenant }}'
+          $requested = $env:REQUESTED_TENANT
           $tenants   = if ($requested) { @($requested) } else {
             Get-ChildItem tenants -Directory | Select-Object -ExpandProperty Name
           }
@@ -174,8 +176,12 @@ jobs:
 
       - name: Warn on drift
         if: steps.check.outputs.drift_count != '0'
+        env:
+          TENANT_NAME: ${{ matrix.tenant }}
+          DRIFT_COUNT: ${{ steps.check.outputs.drift_count }}
+          FAIL_ON_DRIFT: ${{ github.event.inputs.fail_on_drift }}
         run: |
-          echo "::warning::Configuration drift detected for tenant ${{ matrix.tenant }}: ${{ steps.check.outputs.drift_count }} drift(s) found. Review the job summary for details."
-          if [[ '${{ github.event.inputs.fail_on_drift }}' == 'true' ]]; then
+          echo "::warning::Configuration drift detected for tenant $TENANT_NAME: $DRIFT_COUNT drift(s) found. Review the job summary for details."
+          if [[ '$FAIL_ON_DRIFT' == 'true' ]]; then
             exit 1
           fi
