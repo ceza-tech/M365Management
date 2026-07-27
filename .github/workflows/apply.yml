@@ -37,8 +37,10 @@ jobs:
       - name: List tenants
         id: list
         shell: pwsh
+        env:
+          TENANT_INPUT: ${{ github.event.inputs.tenant }}
         run: |
-          $requested = '${{ github.event.inputs.tenant }}'
+          $requested = $env:TENANT_INPUT
 
           # On push, detect which tenants have changed files
           if ($env:GITHUB_EVENT_NAME -eq 'push' -and -not $requested) {
