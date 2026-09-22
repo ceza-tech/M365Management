@@ -7,11 +7,6 @@ resources:
     properties:
       Ensure: "Present"
       Id: "ef282f43-5451-4ae3-b6cc-0b8aa09c6ca5"
-      DisplayName: "WinguHQ"
-      OdataType: "#microsoft.graph.ipNamedLocation"
-      IsTrusted: true          # Mark as trusted location — excluded from MFA in CA policies
-      IpRanges:
-        - "139.218.117.186/32"   # Office public IP
 
 # To add more locations:
 #  - resourceType: microsoft.entra.namedlocationpolicy

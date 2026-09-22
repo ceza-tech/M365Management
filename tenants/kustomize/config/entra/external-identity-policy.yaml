@@ -6,7 +6,4 @@ resources:
   - resourceType: microsoft.entra.externalidentitypolicy
     properties:
       IsSingleInstance: "Yes"
-      # Allow guests to remove themselves from this tenant without admin intervention
-      AllowExternalIdentitiesToLeave: true
-      # Whether deleted guest identity data is also removed from the tenant
-      AllowDeletedIdentitiesDataRemoval: false
+      Ensure: "Present"
