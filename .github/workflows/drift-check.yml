@@ -84,10 +84,22 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           USE_OIDC: 'true'
         run: |
-          $driftsJson = ./scripts/Get-Drifts.ps1 -TenantName '${{ matrix.tenant }}' -OutputFormat json
-          $drifts = $driftsJson | ConvertFrom-Json
-
           $tenant = '${{ matrix.tenant }}'
+          try {
+            $driftsJson = ./scripts/Get-Drifts.ps1 -TenantName $tenant -OutputFormat json
+            $drifts = $driftsJson | ConvertFrom-Json
+          } catch {
+            if ($_.Exception.Message -match '(?i)(AADSTS\d{5,}|invalid_client|Missing credentials|Missing AZURE_CLIENT_SECRET)') {
+              "auth_failed=true" >> $env:GITHUB_OUTPUT
+              echo "## ⏭️ Drift Check Skipped — $tenant" >> $env:GITHUB_STEP_SUMMARY
+              echo "" >> $env:GITHUB_STEP_SUMMARY
+              echo "Authentication failed, so drift detection did not run. Verify this tenant's GitHub Environment credentials and Azure federated identity configuration." >> $env:GITHUB_STEP_SUMMARY
+              Write-Output "::warning::Authentication failed for tenant $tenant; drift detection was skipped. Verify its GitHub Environment credentials and Azure federated identity configuration."
+              exit 0
+            }
+            throw
+          }
+          "auth_failed=false" >> $env:GITHUB_OUTPUT
 
           if ($drifts.Count -eq 0) {
             echo "## ✅ No Drift — $tenant" >> $env:GITHUB_STEP_SUMMARY
@@ -108,7 +120,7 @@ jobs:
           }
 
       - name: Create or update GitHub Issue on drift detected
-        if: steps.check.outputs.drift_count != '0'
+        if: steps.check.outputs.auth_failed != 'true' && steps.check.outputs.drift_count != '0'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           TENANT_NAME: ${{ matrix.tenant }}
@@ -148,7 +160,7 @@ jobs:
             }
 
       - name: Close drift issue if resolved
-        if: steps.check.outputs.drift_count == '0'
+        if: steps.check.outputs.auth_failed != 'true' && steps.check.outputs.drift_count == '0'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           TENANT_NAME: ${{ matrix.tenant }}
@@ -173,7 +185,7 @@ jobs:
             }
 
       - name: Warn on drift
-        if: steps.check.outputs.drift_count != '0'
+        if: steps.check.outputs.auth_failed != 'true' && steps.check.outputs.drift_count != '0'
         run: |
           echo "::warning::Configuration drift detected for tenant ${{ matrix.tenant }}: ${{ steps.check.outputs.drift_count }} drift(s) found. Review the job summary for details."
           if [[ '${{ github.event.inputs.fail_on_drift }}' == 'true' ]]; then
